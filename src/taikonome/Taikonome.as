@@ -62,20 +62,20 @@ package taikonome
 		public static const NOTEBUTTON_HEIGHT:int = 25;
 		
 		public static const NOTE_DURATION  :int = 700; // in samples
-		public static const LATENCY_FUDGE:int = -500;
+		public static const LATENCY_FUDGE:int = 30; // milliseconds
 		public static const TIME_3_4   :String = '3/4';
 		public static const TIME_4_4   :String = '4/4';
 		
 		public static const ALPHA_PLAY:Number = 0.8;
 		public static const ALPHA_OFF:Number = 0.3;
 		
-		public var latency:int = 900;
 		public var eighthnotes :Boolean;
 		public var sxthnnotes :Boolean;
 		
 		protected var _outsound:Sound;
 		protected var _channel:SoundChannel;
 		protected var _isPlaying:Boolean;
+		protected var _latency:int; // milliseconds (how far ahead the sound buffer is)
 		
 		protected var _tempo:int;
 		protected var _signature :String;
@@ -179,7 +179,7 @@ package taikonome
 		}
 		
 		/**
-		 * Fill the buffer with data, in this example we are just filling it with silence
+		 * Fill the sound buffer with data
 		 */
 		public function onSampleData( event:SampleDataEvent ):void
 		{
@@ -188,11 +188,7 @@ package taikonome
             {
                 // latency is the number of milliseconds it will take from now
                 // for the sound to play.
-                var _latency:int = ((event.position / 44.1) - _channel.position);
-                if (_latency > 0)
-                {
-                    latency = _latency;
-                }
+                _latency = ((event.position / 44.1) - _channel.position);
             }
 			
 			for( var i:int = 0; i < BUFFER_SIZE; i++ )
@@ -301,9 +297,9 @@ package taikonome
 		{
 			if (_channel)
 			{
-				var samplesElapsed:int = ((_channel.position + latency + LATENCY_FUDGE) / 1000) * SAMPLE_RATE;
+				var samplesElapsed:int = ((_channel.position + LATENCY_FUDGE) / 1000) * SAMPLE_RATE;
 				
-				var eighthNoteLength:int = SAMPLE_RATE * .5 * 60 / _tempo;
+				var eighthNoteLength:int = SAMPLE_RATE * .5 * 60 / _tempo; // eighth note is half a beat
 				var quarterNoteLength:int = eighthNoteLength * 2;
 				var measureLength:int = quarterNoteLength * 4;
 				
@@ -424,7 +420,7 @@ package taikonome
 				noteButton.mouseEnabled = false; // Disable mouse clicks
 			}
 			
-			// -- measure squares
+			// -- whole note squares
 			w = (WIDTH / 4) - padding;
 			_wholeNoteButton = new Vector.<NoteButton>();
 			for (i = 0; i < 4; i++)
