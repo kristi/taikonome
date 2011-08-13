@@ -75,22 +75,22 @@ package taikonome
 		
 		protected var _outsound:Sound;
 		protected var _channel:SoundChannel;
-		protected var _playing:Boolean;
+		protected var _isPlaying:Boolean;
 		
 		protected var _tempo:int;
 		protected var _signature :String;
 		protected var _step   :int;
-		protected var _notes  :Array;
+		protected var _noteQueue  :Array;
 		protected var _isTempoChanged:Boolean = false;
 		
-		protected var _quarterNotes:Vector.<NoteButton>;
-		protected var _measures:Vector.<NoteButton>;
-		protected var _eighthNotes:Vector.<NoteButton>;
+		protected var _quarterNoteButton:Vector.<NoteButton>;
+		protected var _wholeNoteButton:Vector.<NoteButton>;
+		protected var _shimeNoteButton:Vector.<NoteButton>;
 		
 		protected var _gridContainer:Sprite;
 		protected var _timeClockLabel:Label;
 		protected var _musicClockLabel:Label;
-		protected var _button:PushButton;
+		protected var _playButton:PushButton;
 		
 		protected var _slider:HUISlider
 		protected var _volume:HUISlider
@@ -109,7 +109,7 @@ package taikonome
 			sxthnnotes = false;
 			_signature = TIME_4_4;
 			_step = -1;
-			_notes = [];
+			_noteQueue = [];
 			_outsound = new Sound();
 			
 			if (stage)
@@ -137,7 +137,7 @@ package taikonome
 		 */
 		protected function togglePlayback(event:Event = null):void
 		{
-			if (_playing)
+			if (_isPlaying)
 			{
 				stop();
 			}
@@ -152,10 +152,10 @@ package taikonome
 		 */
 		protected function stop():void
 		{
-			if (_channel && _playing)
+			if (_channel && _isPlaying)
 			{
-				_playing = false;
-				_button.label = 'Play';
+				_isPlaying = false;
+				_playButton.label = 'Play';
 				_outsound.removeEventListener(SampleDataEvent.SAMPLE_DATA, onSampleData);
 				_channel.stop();
 				_channel = null;
@@ -168,10 +168,10 @@ package taikonome
 		 */
 		protected function play():void
 		{
-			if (!_playing)
+			if (!_isPlaying)
 			{
-				_playing = true;
-				_button.label = 'Stop';
+				_isPlaying = true;
+				_playButton.label = 'Stop';
 				addEventListener(Event.ENTER_FRAME, onPlaybackEnterFrame);
 				_outsound.addEventListener(SampleDataEvent.SAMPLE_DATA, onSampleData);
 				_channel = _outsound.play();
@@ -213,9 +213,9 @@ package taikonome
 						_step = n;
 						
 						if( _step % 24 == 0 ) {
-							_notes.push( new Note( NOTE_DURATION, 1760 ) );
+							_noteQueue.push( new Note( NOTE_DURATION, 1760 ) );
 						} else if( _step % 8 == 0 ) {
-							_notes.push( new Note( NOTE_DURATION * .25, 880, .5 ) );
+							_noteQueue.push( new Note( NOTE_DURATION * .25, 880, .5 ) );
 						}
 					}
 				}
@@ -229,20 +229,20 @@ package taikonome
 					{
 						_step = n;
 						// 16 steps per eighth note, 32 eighth notes per line
-						if (_eighthNotes[int(_step/16) % 32].selected)
+						if (_shimeNoteButton[int(_step/16) % 32].selected)
 						{
 							// -- whole note
 							if( _step % 128 == 0 ) {
-								_notes.push( new Note( NOTE_DURATION, 1760 ) );
+								_noteQueue.push( new Note( NOTE_DURATION, 1760 ) );
 								// -- quater
 							} else if( _step % 32 == 0 )  {
-								_notes.push( new Note( NOTE_DURATION, 880, .7 ) );
+								_noteQueue.push( new Note( NOTE_DURATION, 880, .7 ) );
 								// -- 8th notes
 							} else if( eighthnotes && _step % 16 == 0 )  {
-								_notes.push( new Note( NOTE_DURATION, 440, .5 ) );
+								_noteQueue.push( new Note( NOTE_DURATION, 440, .5 ) );
 								// -- 16th notes
 							}else if( ( _step % 8 == 0  ) && sxthnnotes ) {
-								_notes.push( new Note( NOTE_DURATION * .5, 220, .5 ) );
+								_noteQueue.push( new Note( NOTE_DURATION * .5, 220, .5 ) );
 							}
 						}
 					}
@@ -250,14 +250,16 @@ package taikonome
 				
 				// -- create the samples, if there are multiple notes in the queue we us addition to merge them
 				var sample:Number = 0;
-				for each( note in _notes )  {
+				for each( note in _noteQueue )  {
 					if( note.hasNext() ) {
 						sample += note.getNextFloat();
 					}
 				}
 				
 				// Change volume
-				sample *= (_volume.value / 100);
+				// Use squared to get a better dynamic range
+				// TODO fade volume change so you don't get little pops when changing
+				sample *= Math.pow(_volume.value / 60, 1.8); // 1.8 seems ok experimentally
 				
 				event.data.writeFloat( sample * .8 ); //L?
 				event.data.writeFloat( sample * .8 ); //R?
@@ -270,13 +272,13 @@ package taikonome
 			var temp:Array = [];
 			var note:Note;
 			
-			for each( note in _notes ) {
+			for each( note in _noteQueue ) {
 				if( note.hasNext() ) {
 					temp.push( note );
 				}
 			}
 			
-			_notes = temp;
+			_noteQueue = temp;
 		}
 		protected function onSampleDataDummy(event:SampleDataEvent):void
 		{
@@ -299,7 +301,7 @@ package taikonome
 		{
 			if (_channel)
 			{
-				var samplesElapsed:int = (_channel.position / 1000) * SAMPLE_RATE + latency + LATENCY_FUDGE;
+				var samplesElapsed:int = ((_channel.position + latency + LATENCY_FUDGE) / 1000) * SAMPLE_RATE;
 				
 				var eighthNoteLength:int = SAMPLE_RATE * .5 * 60 / _tempo;
 				var quarterNoteLength:int = eighthNoteLength * 2;
@@ -313,41 +315,41 @@ package taikonome
 				var i:int = 0;
 				
 				// -- current 1/8 note
-				for (i = 0; i < _eighthNotes.length; i++)
+				for (i = 0; i < _shimeNoteButton.length; i++)
 				{
 					if (i == eighth)
 					{
-						_eighthNotes[i].alpha = ALPHA_PLAY
+						_shimeNoteButton[i].alpha = ALPHA_PLAY
 					}
 					else
 					{
-						_eighthNotes[i].alpha = ALPHA_OFF;
+						_shimeNoteButton[i].alpha = ALPHA_OFF;
 					}
 				}
 				
 				// -- current 1/4 note
-				for (i = 0; i < _quarterNotes.length; i++)
+				for (i = 0; i < _quarterNoteButton.length; i++)
 				{
 					if (i == quarter)
 					{
-						_quarterNotes[i].alpha = ALPHA_PLAY;
+						_quarterNoteButton[i].alpha = ALPHA_PLAY;
 					}
 					else
 					{
-						_quarterNotes[i].alpha = ALPHA_OFF;
+						_quarterNoteButton[i].alpha = ALPHA_OFF;
 					}
 				}
 				
 				// -- current measure
-				for (i = 0; i < _measures.length; i++)
+				for (i = 0; i < _wholeNoteButton.length; i++)
 				{
 					if (i == measure)
 					{
-						_measures[i].alpha = ALPHA_PLAY;
+						_wholeNoteButton[i].alpha = ALPHA_PLAY;
 					}
 					else
 					{
-						_measures[i].alpha = ALPHA_OFF;
+						_wholeNoteButton[i].alpha = ALPHA_OFF;
 					}
 				}
 				
@@ -384,7 +386,7 @@ package taikonome
 			_gridContainer = new Sprite();
 			
 			w = (WIDTH / 32) - padding;
-			_eighthNotes = new Vector.<NoteButton>();
+			_shimeNoteButton = new Vector.<NoteButton>();
 			
 			// -- eighth note squares
 			for (i = 0; i < 32; i++)
@@ -400,12 +402,12 @@ package taikonome
 				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				
-				_eighthNotes.push(noteButton);
+				_shimeNoteButton.push(noteButton);
 			}
 			
 			// -- quarter note squares
 			w = (WIDTH / 16) - padding;
-			_quarterNotes = new Vector.<NoteButton>();
+			_quarterNoteButton = new Vector.<NoteButton>();
 			for (i = 0; i < 16; i++)
 			{
 				noteButton = new NoteButton(_gridContainer);
@@ -418,13 +420,13 @@ package taikonome
 				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				
-				_quarterNotes.push(noteButton);
+				_quarterNoteButton.push(noteButton);
 				noteButton.mouseEnabled = false; // Disable mouse clicks
 			}
 			
 			// -- measure squares
 			w = (WIDTH / 4) - padding;
-			_measures = new Vector.<NoteButton>();
+			_wholeNoteButton = new Vector.<NoteButton>();
 			for (i = 0; i < 4; i++)
 			{
 				//noteButton = getNoteSprite(w, 0x00C6FF);
@@ -438,7 +440,7 @@ package taikonome
 				noteButton.index = i;
 				noteButton.mouseEnabled = false; // Disable mouse clicks
 				
-				_measures.push(noteButton);
+				_wholeNoteButton.push(noteButton);
 			}
 			
 			_gridContainer.x = 40;
@@ -451,7 +453,7 @@ package taikonome
 			_volume = new HUISlider(this, 130, y, 'Volume', null);
 			_volume.minimum = 0;
 			_volume.maximum = 100;
-			_volume.value = 80;
+			_volume.value = 50;
 			_volume.width = 160;
 			_volume.labelPrecision = 0;
 			
@@ -462,8 +464,8 @@ package taikonome
 			_slider.width = 250;
 			_slider.labelPrecision = 0;
 			
-			_button = new PushButton(this, 507, y, 'Play', togglePlayback);
-			_button.toggle = true;
+			_playButton = new PushButton(this, 507, y, 'Play', togglePlayback);
+			_playButton.toggle = true;
 			
 			button = new PushButton(this, 630, y, 'Clear', clearBeat);
 			
@@ -494,7 +496,7 @@ package taikonome
 			var button:NoteButton;
 			for (var i:int = 0; i < 32; i++)
 			{
-				button = _eighthNotes[i];
+				button = _shimeNoteButton[i];
 				button.selected = false;
 			}
 		}
@@ -503,7 +505,7 @@ package taikonome
 			var button:NoteButton;
 			for (var i:int = 0; i < 32; i++)
 			{
-				button = _eighthNotes[i];
+				button = _shimeNoteButton[i];
 				button.selected = (i % 4 != 1);
 			}
 		}
@@ -512,7 +514,7 @@ package taikonome
 			var button:NoteButton;
 			for (var i:int = 0; i < 32; i++)
 			{
-				button = _eighthNotes[i];
+				button = _shimeNoteButton[i];
 				button.selected = (i % 2 == 0);
 			}
 		}
@@ -521,7 +523,7 @@ package taikonome
 			var button:NoteButton;
 			for (var i:int = 0; i < 32; i++)
 			{
-				button = _eighthNotes[i];
+				button = _shimeNoteButton[i];
 				button.selected = (i % 4 != 1) && (i % 8 != 7);
 			}
 		}
