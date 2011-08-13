@@ -4,6 +4,7 @@ package taikonome
 	import com.bit101.components.Style;
 	import flash.display.DisplayObjectContainer;
 	import flash.display.Sprite;
+	import flash.events.Event;
 	import flash.events.MouseEvent;
 	
 	/**
@@ -12,6 +13,7 @@ package taikonome
 	 */
 	public class NoteButton extends PushButton 
 	{
+		public static const SELECTED_CHANGED:String = "selectedChanged";
 		public var color:uint = 0xDDDDDD;
 		public var colorActive:uint = 0x00C6FF;
 		
@@ -60,6 +62,8 @@ package taikonome
 			_down = _selected;
 			_face.filters = [getShadow(1, _selected)];
 			drawFace();
+			
+			dispatchEvent(new Event(SELECTED_CHANGED));
 		}
 		
 		/**
@@ -96,7 +100,7 @@ package taikonome
 			_over = true;
 			if (_toggle && event.buttonDown) { 
 				selected = !selected; 
-				drawFace();
+				//drawFace();
 			}
 			addEventListener(MouseEvent.ROLL_OUT, onMouseOut);
 		}
@@ -123,11 +127,11 @@ package taikonome
 		{
 			if(_toggle)
 			{
-				_selected = !_selected;
+				selected = !selected;
 			}
-			_down = true;
-			drawFace();
-			_face.filters = [getShadow(1, true)];
+			//_down = true;
+			//drawFace();
+			//_face.filters = [getShadow(1, true)];
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseGoUp);
 		}
 		

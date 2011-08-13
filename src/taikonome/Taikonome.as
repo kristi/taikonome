@@ -15,6 +15,9 @@ package taikonome
 	import flash.media.Sound;
 	import flash.media.SoundChannel;
 	import flash.utils.ByteArray;
+	import flash.external.ExternalInterface;
+	import flash.utils.setTimeout;
+	import flash.utils.clearTimeout;
 	
 	
 	/**
@@ -95,6 +98,9 @@ package taikonome
 		protected var _slider:HUISlider
 		protected var _volume:HUISlider
 		
+		protected var _externalHashChange:Boolean = false;
+		protected var _hashChangeTime:uint = 0;
+		
 		// Debug clicking
 		public function onClickStage(e:MouseEvent):void{
 			trace(e.target,e.target.name);
@@ -117,13 +123,44 @@ package taikonome
 			else
 				addEventListener(Event.ADDED_TO_STAGE, init);
 		}
+
+		public function getHash():String {
+			var h:String = ExternalInterface.call("getHash");
+			if (h.charAt(0) == "#") {
+				h = h.substr(1);
+			}
+			return h;
+		}
+		public function setHash(s:String):void {
+			ExternalInterface.call("setHash",s);
+		}
+
+		public function hashChange():void {
+			_externalHashChange = true;
+			hexToBeat(getHash());
+			_externalHashChange = false;
+		}
+		
+		public function batchHashChange():void {
+			if (_hashChangeTime != 0) {
+				clearTimeout(_hashChangeTime);
+			}
+			_hashChangeTime = setTimeout(setHash, 300, getCurrentBeatHexString());
+		}
 		
 		private function init(e:Event = null):void
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			// entry point
 			createDisplay();
-			setupStraight();
+			
+			ExternalInterface.addCallback("flashHash",hashChange);
+			var h:String = getHash();
+			if (h!=null) {
+				hexToBeat(h);
+			} else {
+				trace("h was null")
+			}
 		}
 		
 		
@@ -397,6 +434,11 @@ package taikonome
 				noteButton.y = 22;
 				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
+				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(...u):void {
+						if (!_externalHashChange) {
+							batchHashChange();
+						}
+					});
 				
 				_shimeNoteButton.push(noteButton);
 			}
@@ -498,30 +540,77 @@ package taikonome
 		}
 		
 		public function setupHorsebeat(event:Event=null):void {
-			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++)
-			{
-				button = _shimeNoteButton[i];
-				button.selected = (i % 4 != 1);
-			}
+			//var button:NoteButton;
+			//for (var i:int = 0; i < 32; i++)
+			//{
+				//button = _shimeNoteButton[i];
+				//button.selected = (i % 4 != 1);
+			//}
+			hexToBeat("DDDDDDDD");
 		}
 		
 		public function setupStraight(event:Event=null):void {
-			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++)
-			{
-				button = _shimeNoteButton[i];
-				button.selected = (i % 2 == 0);
-			}
+			//var button:NoteButton;
+			//for (var i:int = 0; i < 32; i++)
+			//{
+				//button = _shimeNoteButton[i];
+				//button.selected = (i % 2 == 0);
+			//}
+			hexToBeat("55555555");
 		}
 		
 		public function setupMatsuri(event:Event=null):void {
 			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++)
+			for (var i:int = 0; i < _shimeNoteButton.length; i++)
 			{
 				button = _shimeNoteButton[i];
 				button.selected = (i % 4 != 1) && (i % 8 != 7);
 			}
 		}
+		
+		/**
+		 * Sets the rhythm from a hex string
+		 * @param	str  e.g. "aacc3311"
+		 */
+		public function hexToBeat(str:String):void {
+			var a:Array = stringToBitArray(str);
+			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
+				_shimeNoteButton[i].selected = (i < a.length) ? a[i] : 0;
+			}
+		}
+		/**
+		 * Converts a string to an array of 0's and 1's.
+		 * @param	str
+		 * @return
+		 */
+		public function stringToBitArray(str:String):Array {
+			var a:Array = [];
+			for (var i:int = 0; i < str.length; i+=8)
+			{
+				var k:uint = parseInt(str.substr(i, 8), 16);
+				for (var shift:int = 0; shift < 32; shift++) {
+					a.push((k & (1 << shift))>>shift);
+				}
+			}
+			return a;
+		}
+		public function bitArrayToHexString(a:Array):String {
+			// [1 0 0 0 ... 0] => "1"
+			var n:int;
+			for (var i:int = 0; i < a.length; i++)
+			{
+				n += a[i] << i;
+			}
+			return n.toString(16);
+		}
+		public function getCurrentBeatHexString():String {
+			var n:uint;
+			for (var i:uint = 0; i < _shimeNoteButton.length; i++)
+			{
+				n += int(_shimeNoteButton[i].selected) << i;
+			}
+			return n.toString(16);
+		}
+		
 	}
 }
