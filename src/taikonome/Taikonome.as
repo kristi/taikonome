@@ -146,11 +146,11 @@ package taikonome
 			
 			return s;
 		}
-		public function setExternalHash(h:String=null):void {
+		public function pushExternalBeatHash(h:String=null):void {
 			if (h == null) {
 				h = beatToHash();
 			}
-			var s:String = "#v=" + VERSION + "&b=" + _tempo.toString() + "&h=" + sanitize(h);
+			var s:String = "#v=" + VERSION.replace(/\./,"_") + "&b=" + _tempo.toString() + "&h=" + sanitize(h);
 			ExternalInterface.call("setHash",s);
 		}
 		/**
@@ -159,6 +159,7 @@ package taikonome
 		 * @param	arg
 		 */
 		public function updateURLVars(arg:URLVariables = null):void {
+			trace(updateURLVars);
 			var str:String;
 			if (arg == null) {
 				str = getExternalHash();
@@ -167,9 +168,11 @@ package taikonome
 					arg.decode(str);
 				}
 			}
-			arg.v = VERSION;
+			arg.v = VERSION.replace(/\./,"_");
 			arg.b = _tempo.toString();
-			ExternalInterface.call("setHash",arg.toString());
+			//_doUpdateHash = false;
+			ExternalInterface.call("setHash", arg.toString());
+			//_doUpdateHash = true;
 		}
 
 		// Called when the url hash has changed
@@ -215,7 +218,7 @@ package taikonome
 			if (_hashChangeTimer != 0) {
 				clearTimeout(_hashChangeTimer);
 			}
-			_hashChangeTimer = setTimeout(setExternalHash, 300, beatToHash());
+			_hashChangeTimer = setTimeout(pushExternalBeatHash, 300, beatToHash());
 		}
 		public function batchVarHashUpdate(arg:URLVariables=null):void {
 			if (_varChangeTimer != 0) {
@@ -617,7 +620,7 @@ package taikonome
 				//b.writeUnsignedInt(Math.random() * uint.MAX_VALUE);
 			//}
 			//var h:String = MD5.hashBytes(b);
-			setExternalHash(beatToHash());
+			pushExternalBeatHash(beatToHash());
 			_doUpdateHash = true;
 		}
 		
@@ -626,7 +629,7 @@ package taikonome
 			_inputText.removeEventListener(FocusEvent.FOCUS_IN, clearInput);
 		}
 		public function setHashFromInputText(event:Event=null):void {
-			setExternalHash(_inputText.text);
+			pushExternalBeatHash(_inputText.text);
 		}
 		
 		/**
