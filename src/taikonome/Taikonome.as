@@ -126,7 +126,8 @@ package taikonome
 
 		public function getHash():String {
 			var h:String = ExternalInterface.call("getHash");
-			if (h.charAt(0) == "#") {
+			// Strip leading # sign
+			if (h!=null && h.charAt(0) == "#") {
 				h = h.substr(1);
 			}
 			return h;
@@ -154,13 +155,8 @@ package taikonome
 			// entry point
 			createDisplay();
 			
-			ExternalInterface.addCallback("flashHash",hashChange);
-			var h:String = getHash();
-			if (h!=null) {
-				hexToBeat(h);
-			} else {
-				trace("h was null")
-			}
+			ExternalInterface.addCallback("flashHash", hashChange);
+			hexToBeat(getHash());
 		}
 		
 		
@@ -513,7 +509,7 @@ package taikonome
 			button = new PushButton(this, 200, y, 'Horsebeat', setupHorsebeat);
 			button = new PushButton(this, 310, y, 'Matsuri', setupMatsuri);
 			
-			label = new Label(this, 630, 140, 'Taiko Metronome v0.1');
+			label = new Label(this, 630, 140, 'Taiko Metronome v0.2');
 			
 			addChild(_gridContainer);
 		}
@@ -573,9 +569,13 @@ package taikonome
 		 * @param	str  e.g. "aacc3311"
 		 */
 		public function hexToBeat(str:String):void {
+			if (str == null) { return; }
 			var a:Array = stringToBitArray(str);
 			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
-				_shimeNoteButton[i].selected = (i < a.length) ? a[i] : 0;
+				var value:Boolean = (i < a.length) ? a[i] : 0;
+				if (value != _shimeNoteButton[i].selected) {
+					_shimeNoteButton[i].selected = value;
+				}
 			}
 		}
 		/**
