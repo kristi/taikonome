@@ -15,6 +15,7 @@ package taikonome
 	import flash.external.ExternalInterface;
 	import flash.media.Sound;
 	import flash.media.SoundChannel;
+	import flash.net.URLVariables;
 	import flash.utils.ByteArray;
 	import flash.utils.clearTimeout;
 	import flash.utils.setTimeout;
@@ -103,7 +104,8 @@ package taikonome
 		protected var _volumeSlider:HUISlider
 		
 		protected var _doUpdateHash:Boolean = true;
-		protected var _hashChangeTime:uint = 0;
+		protected var _hashChangeTimer:uint = 0;
+		protected var _varChangeTimer:uint = 0;
 		protected var _base64Encoder:Base64Encoder;
 		protected var _base64Decoder:Base64Decoder;
 		
@@ -134,27 +136,94 @@ package taikonome
 		}
 
 		public function getExternalHash():String {
-			var h:String = ExternalInterface.call("getHash");
+			var s:String = ExternalInterface.call("getHash");
+			if (s == null) { return null; };
 			// Strip leading # sign
-			if (h!=null && h.charAt(0) == "#") {
-				h = h.substr(1);
+			if (s.length>=1 && s.charAt(0) == "#") {
+				s = s.substr(1);
 			}
-			return h;
+			if (s.length <= 1) { return null; };
+			
+			return s;
 		}
-		public function setExternalHash(s:String):void {
-			ExternalInterface.call("setHash",sanitize(s));
+		public function setExternalHash(h:String=null):void {
+			if (h == null) {
+				h = beatToHash();
+			}
+			var s:String = "#v=" + VERSION + "&b=" + _tempo.toString() + "&h=" + sanitize(h);
+			ExternalInterface.call("setHash",s);
+		}
+		/**
+		 * Updates everything EXCEPT the beat hash.
+		 * If arg is null, read the current hash.
+		 * @param	arg
+		 */
+		public function updateURLVars(arg:URLVariables = null):void {
+			var str:String;
+			if (arg == null) {
+				str = getExternalHash();
+				arg = new URLVariables();
+				if (str != null) {
+					arg.decode(str);
+				}
+			}
+			arg.v = VERSION;
+			arg.b = _tempo.toString();
+			ExternalInterface.call("setHash",arg.toString());
 		}
 
-		public function hashExternalChange():void {
-			hashToBeat(getExternalHash());
+		// Called when the url hash has changed
+		public function updateFromExternalHash(pushChanges:Boolean=true):void {
+			var s:String = getExternalHash();
+			// Parse string
+			// Format: "v=0.3&b=160&h=HaShCoDe"
+			var arg:URLVariables = new URLVariables(s);
+			
+			if (!arg) {
+				trace("[Taikonome]Warning:Couldn't parse hash", s);
+				return; 
+			}
+			// Version check
+			if (! arg.v) {
+				//trace("[Taikonome]Warning: no version param");
+			}
+			else if (arg.v != VERSION) {
+				//TODO detect old versions?
+				//trace("[Taikonome]Warning: version string does not match")
+			}
+			
+			// Beat hash
+			if (arg.h) {
+				hashToBeat(arg.h);
+			}
+			// Tempo (in bps)
+			if (arg.b) {
+				var n:Number = Number(arg.b);
+				if(!isNaN(n)) {
+					_tempoSlider.value = n;
+					_tempo = Math.round(_tempoSlider.value);
+					_isTempoChanged = true;
+				}
+			}
+			if (pushChanges) {
+				updateURLVars(arg);
+			}
 		}
 		
-		public function batchHashChange():void {
-			if (_hashChangeTime != 0) {
-				clearTimeout(_hashChangeTime);
+		// Called if there have not been any beat changes for the last 300ms
+		public function batchBeatHashUpdate():void {
+			if (_hashChangeTimer != 0) {
+				clearTimeout(_hashChangeTimer);
 			}
-			_hashChangeTime = setTimeout(setExternalHash, 300, beatToHash());
+			_hashChangeTimer = setTimeout(setExternalHash, 300, beatToHash());
 		}
+		public function batchVarHashUpdate(arg:URLVariables=null):void {
+			if (_varChangeTimer != 0) {
+				clearTimeout(_varChangeTimer);
+			}
+			_varChangeTimer = setTimeout(updateURLVars, 200, arg);
+		}
+		
 		
 		private function init(e:Event = null):void
 		{
@@ -164,8 +233,9 @@ package taikonome
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 			createDisplay();
 			
-			ExternalInterface.addCallback("flashHash", hashExternalChange);
-			hashExternalChange();
+			ExternalInterface.addCallback("flashHash", updateFromExternalHash);
+			// force beat update from url
+			updateFromExternalHash(false);
 		}
 		
 		
@@ -401,10 +471,12 @@ package taikonome
 		/**
 		 * Update the value of the tempo
 		 */
-		protected function onTempoChange(event:Event):void
+		protected function onTempoChange(event:Event=null):void
 		{
 			_tempo = Math.round(_tempoSlider.value);
 			_isTempoChanged = true;
+			//update the url, (but keep the same beat hash)
+			batchVarHashUpdate();
 		}
 		
 		
@@ -441,7 +513,7 @@ package taikonome
 				noteButton.index = i;
 				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(...u):void {
 						if (_doUpdateHash) {
-							batchHashChange();
+							batchBeatHashUpdate();
 						}
 					});
 				
@@ -522,11 +594,11 @@ package taikonome
 			
 			y = 180;
 			button = new PushButton(this, 40, y, 'Random Beat', setRandom);
-			_inputText = new InputText(this, 160, y, 'Input some text', setFromInput);
+			_inputText = new InputText(this, 160, y, 'Input some text', setHashFromInputText);
 			_inputText.height = 20;
 			_inputText.width = 285;
 			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
-			button = new PushButton(this, 450, y, 'Generate from text', setFromInput);
+			button = new PushButton(this, 450, y, 'Generate from text', setHashFromInputText);
 			
 			label = new Label(this, 660, y+5, 'Taikonome v'+VERSION);
 		}
@@ -544,7 +616,7 @@ package taikonome
 			//for (var i:int = 0; i < 3; i++) {
 				//b.writeUnsignedInt(Math.random() * uint.MAX_VALUE);
 			//}
-			//hashToBeat(MD5.hashBytes(b))
+			//var h:String = MD5.hashBytes(b);
 			setExternalHash(beatToHash());
 			_doUpdateHash = true;
 		}
@@ -553,8 +625,7 @@ package taikonome
 			_inputText.text = "";
 			_inputText.removeEventListener(FocusEvent.FOCUS_IN, clearInput);
 		}
-		public function setFromInput(event:Event=null):void {
-			//hashToBeat(_inputText.text);
+		public function setHashFromInputText(event:Event=null):void {
 			setExternalHash(_inputText.text);
 		}
 		
@@ -687,14 +758,16 @@ package taikonome
 			
 			// Decode base64
 			var base64Success:Boolean = false;
-			for (i = 2; i >= 0; i-- ) {
+			for (i = 0; i <= 2; i++ ) {
 				try {
 					// String may need trailing equals
 					_base64Decoder.decode(str + StringUtil.repeat('=', i));
 					b = _base64Decoder.toByteArray();
 					base64Success = true;
 					break;
-				} catch (e:Error) { trace(e); }
+				} catch (e:Error) {
+					// Do nothing
+				}
 			}
 			var inflateSuccess:Boolean = false;
 			if (base64Success) {
