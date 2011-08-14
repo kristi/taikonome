@@ -1,24 +1,26 @@
 package taikonome
 {
+	import com.adobe.net.DynamicURLLoader;
+	import com.bit101.components.HUISlider;
+	import com.bit101.components.InputText;
 	import com.bit101.components.Label;
 	import com.bit101.components.PushButton;
-	import com.bit101.components.HUISlider;
-	
-	import flash.display.StageAlign;
-	import flash.display.StageScaleMode;
-	import flash.display.Sprite;
-	import flash.display.Graphics;
 	import flash.display.Sprite;
 	import flash.events.Event;
-	import flash.events.SampleDataEvent;
 	import flash.events.MouseEvent;
+	import flash.events.SampleDataEvent;
+	import flash.external.ExternalInterface;
 	import flash.media.Sound;
 	import flash.media.SoundChannel;
 	import flash.utils.ByteArray;
-	import flash.external.ExternalInterface;
-	import flash.utils.setTimeout;
 	import flash.utils.clearTimeout;
-	
+	import flash.utils.setTimeout;
+	import mx.utils.Base64Encoder;
+	import mx.utils.Base64Decoder;
+	import mx.utils.StringUtil;
+	import com.adobe.crypto.MD5;
+	import flash.display.StageAlign;
+	import flash.display.StageScaleMode;
 	
 	/**
 	 * Taikonome (http://taikonome.com)
@@ -53,7 +55,7 @@ package taikonome
 	 *
 	 * @author Kristi Tsukida
 	 */
-	[SWF(backgroundColor="0xFDF8F2",width="770",height="170",frameRate="60")]
+	[SWF(backgroundColor="0xFDF8F2",width="770",height="300",frameRate="60")]
 	public class Taikonome extends Sprite
 	{
 		public static const BUFFER_SIZE:int = 8192;
@@ -94,12 +96,15 @@ package taikonome
 		protected var _timeClockLabel:Label;
 		protected var _musicClockLabel:Label;
 		protected var _playButton:PushButton;
+		protected var _inputText:InputText;
 		
 		protected var _slider:HUISlider
 		protected var _volume:HUISlider
 		
-		protected var _externalHashChange:Boolean = false;
+		protected var _doUpdateHash:Boolean = true;
 		protected var _hashChangeTime:uint = 0;
+		protected var _base64Encoder:Base64Encoder;
+		protected var _base64Decoder:Base64Decoder;
 		
 		// Debug clicking
 		public function onClickStage(e:MouseEvent):void{
@@ -117,6 +122,9 @@ package taikonome
 			_step = -1;
 			_noteQueue = [];
 			_outsound = new Sound();
+			_base64Encoder = new Base64Encoder();
+			_base64Encoder.insertNewLines = false;
+			_base64Decoder = new Base64Decoder();
 			
 			if (stage)
 				init();
@@ -124,7 +132,7 @@ package taikonome
 				addEventListener(Event.ADDED_TO_STAGE, init);
 		}
 
-		public function getHash():String {
+		public function getExternalHash():String {
 			var h:String = ExternalInterface.call("getHash");
 			// Strip leading # sign
 			if (h!=null && h.charAt(0) == "#") {
@@ -132,31 +140,31 @@ package taikonome
 			}
 			return h;
 		}
-		public function setHash(s:String):void {
-			ExternalInterface.call("setHash",s);
+		public function setExternalHash(s:String):void {
+			ExternalInterface.call("setHash",sanitize(s));
 		}
 
-		public function hashChange():void {
-			_externalHashChange = true;
-			hexToBeat(getHash());
-			_externalHashChange = false;
+		public function hashExternalChange():void {
+			hashToBeat(getExternalHash());
 		}
 		
 		public function batchHashChange():void {
 			if (_hashChangeTime != 0) {
 				clearTimeout(_hashChangeTime);
 			}
-			_hashChangeTime = setTimeout(setHash, 300, getCurrentBeatHexString());
+			_hashChangeTime = setTimeout(setExternalHash, 300, beatToHash());
 		}
 		
 		private function init(e:Event = null):void
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			// entry point
+			stage.align = StageAlign.TOP;
+			stage.scaleMode = StageScaleMode.NO_SCALE;
 			createDisplay();
 			
-			ExternalInterface.addCallback("flashHash", hashChange);
-			hexToBeat(getHash());
+			ExternalInterface.addCallback("flashHash", hashExternalChange);
+			hashExternalChange();
 		}
 		
 		
@@ -431,7 +439,7 @@ package taikonome
 				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(...u):void {
-						if (!_externalHashChange) {
+						if (_doUpdateHash) {
 							batchHashChange();
 						}
 					});
@@ -478,9 +486,11 @@ package taikonome
 			}
 			
 			_gridContainer.x = 40;
-			_gridContainer.y = 25;
+			_gridContainer.y = 10;
 			
-			var y:int = 100;
+			addChild(_gridContainer);
+			
+			var y:int = 90;
 			_timeClockLabel = new Label(this, 40, y, 'Time: 00:00:00');
 			//_musicClockLabel = new Label(this, 150, y, 'Music Time: 01:04:16');
 			
@@ -503,15 +513,42 @@ package taikonome
 			
 			button = new PushButton(this, 630, y, 'Clear', clearBeat);
 			
-			y = 130;
+			y = 150;
 			label = new Label(this, 40, y, 'Presets');
 			button = new PushButton(this, 90, y, 'Straight', setupStraight);
 			button = new PushButton(this, 200, y, 'Horsebeat', setupHorsebeat);
 			button = new PushButton(this, 310, y, 'Matsuri', setupMatsuri);
 			
-			label = new Label(this, 630, 140, 'Taiko Metronome v0.2');
+			y = 180;
+			button = new PushButton(this, 40, y, 'Random Beat', setRandom);
+			_inputText = new InputText(this, 160, y, 'Input some text', setFromInput);
+			_inputText.height = 20;
+			_inputText.width = 285;
+			button = new PushButton(this, 450, y, 'Generate from text', setFromInput);
 			
-			addChild(_gridContainer);
+			label = new Label(this, 660, y+5, 'Taikonome v0.3');
+		}
+		public function setRandom(event:Event=null):void {
+			var b:ByteArray = new ByteArray();
+			var v:Vector.<int> = new Vector.<int>();
+			var p:Vector.<Number> = new <Number>[.8,.5,.5,.5, .6,.5,.5,.5, .6,.5,.5,.5, .6,.5,.5,.5, 
+			                                     .7, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, ];
+			_doUpdateHash = false;
+			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
+				_shimeNoteButton[i].selected = (Math.random() < p[i]);
+			}
+			// Generate from md5
+			//for (var i:int = 0; i < 3; i++) {
+				//b.writeUnsignedInt(Math.random() * uint.MAX_VALUE);
+			//}
+			//hashToBeat(MD5.hashBytes(b))
+			setExternalHash(beatToHash());
+			_doUpdateHash = true;
+		}
+		
+		public function setFromInput(event:Event=null):void {
+			//hashToBeat(_inputText.text);
+			setExternalHash(_inputText.text);
 		}
 		
 		/**
@@ -536,23 +573,21 @@ package taikonome
 		}
 		
 		public function setupHorsebeat(event:Event=null):void {
-			//var button:NoteButton;
-			//for (var i:int = 0; i < 32; i++)
-			//{
-				//button = _shimeNoteButton[i];
-				//button.selected = (i % 4 != 1);
-			//}
-			hexToBeat("DDDDDDDD");
+			var button:NoteButton;
+			for (var i:int = 0; i < 32; i++)
+			{
+				button = _shimeNoteButton[i];
+				button.selected = (i % 4 != 1);
+			}
 		}
 		
 		public function setupStraight(event:Event=null):void {
-			//var button:NoteButton;
-			//for (var i:int = 0; i < 32; i++)
-			//{
-				//button = _shimeNoteButton[i];
-				//button.selected = (i % 2 == 0);
-			//}
-			hexToBeat("55555555");
+			var button:NoteButton;
+			for (var i:int = 0; i < 32; i++)
+			{
+				button = _shimeNoteButton[i];
+				button.selected = (i % 2 == 0);
+			}
 		}
 		
 		public function setupMatsuri(event:Event=null):void {
@@ -564,53 +599,140 @@ package taikonome
 			}
 		}
 		
-		/**
-		 * Sets the rhythm from a hex string
-		 * @param	str  e.g. "aacc3311"
-		 */
-		public function hexToBeat(str:String):void {
-			if (str == null) { return; }
-			var a:Array = stringToBitArray(str);
-			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
-				var value:Boolean = (i < a.length) ? a[i] : 0;
-				if (value != _shimeNoteButton[i].selected) {
-					_shimeNoteButton[i].selected = value;
-				}
-			}
-		}
-		/**
-		 * Converts a string to an array of 0's and 1's.
-		 * @param	str
-		 * @return
-		 */
-		public function stringToBitArray(str:String):Array {
-			var a:Array = [];
-			for (var i:int = 0; i < str.length; i+=8)
-			{
-				var k:uint = parseInt(str.substr(i, 8), 16);
-				for (var shift:int = 0; shift < 32; shift++) {
-					a.push((k & (1 << shift))>>shift);
-				}
-			}
-			return a;
-		}
-		public function bitArrayToHexString(a:Array):String {
-			// [1 0 0 0 ... 0] => "1"
-			var n:int;
-			for (var i:int = 0; i < a.length; i++)
-			{
-				n += a[i] << i;
-			}
-			return n.toString(16);
-		}
-		public function getCurrentBeatHexString():String {
-			var n:uint;
-			for (var i:uint = 0; i < _shimeNoteButton.length; i++)
-			{
-				n += int(_shimeNoteButton[i].selected) << i;
-			}
-			return n.toString(16);
-		}
 		
+		
+		/**
+		 * Convert beats into hash string
+		 */
+		public function beatToHash(bits:uint = 1):String {
+			if (32 % bits != 0) { throw new Error("bits must be factor of 32"); };
+			var str:String;
+			// Convert vector to ByteArray
+			var b:ByteArray = new ByteArray();
+			var num:uint = 0;
+			var shift:uint = 0;
+			var s:int = 0;
+			var num_selected:int = 0;
+			var len:int = _shimeNoteButton.length;
+			for (var i:uint = 0; i < len; i ++) {
+				s = uint(_shimeNoteButton[i].selected);
+				if (s > 0) { num_selected++; }
+				num += s << (bits * shift++);
+				if (shift * bits >= 32 || i + 1 == len) { // 32-bit ints
+					b.writeInt(num);
+					shift = 0;
+					num = 0;
+				}
+			}
+			if (num_selected == 0) { return ""; }
+			b.deflate();  // Compress byte array
+			_base64Encoder.encodeBytes(b);
+			str = _base64Encoder.toString();
+			
+			// Substitute chars to make url-friendly
+			var char62:RegExp = /\+/g; 
+			var char63:RegExp = /\//g; 
+			str = str.replace(char62, '-');
+			str = str.replace(char63, '_');
+			
+			// Remove trailing equals
+			var equals:RegExp = /=*$/;
+			str = str.replace(equals, '');
+			
+			return str;
+		}
+		public function sanitize(str:String):String {
+			if (str == null || str.length == 0) { return str; }
+			str = StringUtil.restrict(str, "a-zA-Z0-9\\-_");
+			return str;
+		}
+		/**
+		 * Convert a hash string into beats
+		 */
+		public function hashToBeat(str:String = null, bits:int = 1):String {
+			var b:ByteArray;
+			var i:int = 0;
+			var num:uint;
+			
+			if (str == null) { return str; }
+			if (32 % bits != 0) { throw new Error("bits must be factor of 32"); };
+			
+			_doUpdateHash = false;
+			
+			if (str.length == 0) {
+				// Set all to zero
+				for (i = 0; i < _shimeNoteButton.length; i++) {
+					_shimeNoteButton[i].selected = false;
+				}
+				_doUpdateHash = true;
+				return str;
+			}
+			
+			str = sanitize(str);
+			
+			
+			
+			// Undo url substitutions
+			var char62:RegExp = /-/g; 
+			var char63:RegExp = /_/g; 
+			str = str.replace(char62, '+');
+			str = str.replace(char63, '/');
+			
+			// Decode base64
+			var base64Success:Boolean = false;
+			for (i = 2; i >= 0; i-- ) {
+				try {
+					// String may need trailing equals
+					_base64Decoder.decode(str + StringUtil.repeat('=', i));
+					b = _base64Decoder.toByteArray();
+					base64Success = true;
+					break;
+				} catch (e:Error) { trace(e); }
+			}
+			var inflateSuccess:Boolean = false;
+			if (base64Success) {
+				//throw(new Error("Unable to decode hash string"));
+				
+				// Make sure there are a whole number of ints
+				b.position = b.length;
+				for (i = 0; i < (b.position % 4); i++) {
+					b.writeByte(0);
+				}
+				
+				// Decompress
+				try {
+					b.inflate();
+					inflateSuccess = true;
+				} catch (e:Error) {
+					// Do nothing
+					// Probably random user input string
+				}
+			}
+			if (!inflateSuccess) {
+				// Use md5 hash
+				MD5.hash(str);
+				b = MD5.digest;
+			}
+			
+			// Convert ByteArray to beats
+			var mask:uint = (1 << bits) - 1;  // e.g. if bits=4, mask=0...01111 (in binary)
+			var len:int = _shimeNoteButton.length;
+			i = 0;
+			b.position = 0; // reset b so we can read from it
+			while (b.position < b.length) {
+				num = b.readUnsignedInt();
+				for (var shift:int = 0; shift < 32; shift+=bits) {
+					var val:Boolean = ((num >> shift) & mask) > 0;
+					if (i < len) { 
+						_shimeNoteButton[i++].selected = val;
+					} else if (val) {
+						// Toggle selected if value is true
+						_shimeNoteButton[i % len].selected = !_shimeNoteButton[i++ % len].selected;
+					}
+				}
+			}
+			_doUpdateHash = true;
+			return str;
+		}
 	}
 }

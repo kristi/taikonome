@@ -53,6 +53,7 @@ package taikonome
 		// Update button face when changing the selected value
 		override public function set selected(value:Boolean):void
 		{
+			var old_selected:Boolean = _selected;
 			if(!_toggle)
 			{
 				value = false;
@@ -60,10 +61,12 @@ package taikonome
 			
 			_selected = value;
 			_down = _selected;
-			_face.filters = [getShadow(1, _selected)];
-			drawFace();
 			
-			dispatchEvent(new Event(SELECTED_CHANGED));
+			if (old_selected != _selected) {
+				_face.filters = [getShadow(1, _selected)];
+				drawFace();
+				dispatchEvent(new Event(SELECTED_CHANGED));
+			}
 		}
 		
 		/**
