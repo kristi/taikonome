@@ -1,11 +1,13 @@
 package taikonome
 {
-	import com.adobe.net.DynamicURLLoader;
+	import com.adobe.crypto.MD5;
 	import com.bit101.components.HUISlider;
 	import com.bit101.components.InputText;
 	import com.bit101.components.Label;
 	import com.bit101.components.PushButton;
 	import flash.display.Sprite;
+	import flash.display.StageAlign;
+	import flash.display.StageScaleMode;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
 	import flash.events.SampleDataEvent;
@@ -15,12 +17,9 @@ package taikonome
 	import flash.utils.ByteArray;
 	import flash.utils.clearTimeout;
 	import flash.utils.setTimeout;
-	import mx.utils.Base64Encoder;
 	import mx.utils.Base64Decoder;
+	import mx.utils.Base64Encoder;
 	import mx.utils.StringUtil;
-	import com.adobe.crypto.MD5;
-	import flash.display.StageAlign;
-	import flash.display.StageScaleMode;
 	
 	/**
 	 * Taikonome (http://taikonome.com)
