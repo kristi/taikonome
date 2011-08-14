@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Taikonome: a simple taiko metronome</title>
+	<meta name="language" content="en" />
+	<meta name="description" content="a free online taiko metronome" />
+	<meta name="keywords" content="online taiko metronome free drum sequencer beat machine pattern rhythm generator open source shime ji base beat audio music sound practice taikonome straight horsebeat matsuri japan" />
+	<!-- For facebook -->
+	<meta property="og:image" content="http://taikonome.com/favicon.png" />
+	<meta property="og:image" content="http://taikonome.com/gnome.png" />
+
+	<link rel="image_src" type="image/png" href="http://taikonome.com/gnome.png" />
+
+	<script type="text/javascript" src="http://code.jquery.com/jquery-1.6.2.min.js"></script>
+	<script type="text/javascript">
+	var getHash = function() {
+		return window.location.hash;
+	}
+	var setHash = function(a) {
+		window.location.hash = a;
+	}
+	$(window).bind('hashchange',function() {	
+		$("#taikonome")[0].flashHash();
+	});
+	</script>
+
+
+	<script src="js/swfobject.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		var flashvars = {
+		};
+		var params = {
+			menu: "false",
+			scale: "noScale",
+			allowFullscreen: "true",
+			allowScriptAccess: "always",
+			bgcolor: "",
+			wmode: "direct"
+		};
+		var attributes = {
+			id:"taikonome"
+		};
+		swfobject.embedSWF("taikonome.swf", "altContent", "800px", "250px", "10.0.0", "expressInstall.swf", flashvars, params, attributes);
+	</script>
+<style type="text/css">
+html{ background: #FDF8F2;}
+body { margin:0px auto; font-family: sans-serif; color: #555555; line-height:1.5em;}
+a{color:#1CBBC4; text-decoration:none;}
+a:hover{text-decoration:underline;}
+#main { margin:40px auto 20px; text-align:center;}
+#metronome { margin: auto; }
+#top{width:800px; margin: auto;}
+#header{width:460px; text-align:center; float:right;}
+#social-right{float:right; width=170px; padding:100px 10px 0px 10px; text-align:center;}
+#social-left{float:right; width=170px;padding:115px  40px 0px 10px; text-align:center;}
+
+#logo{width:450px; height:204px; margin: auto; display: inline-block;
+background:url(taikonome-logo.png) top center no-repeat;}
+#logo:hover{background:url(taikonome-logo-mouseover.png) top center no-repeat,
+url(taikonome-logo.png) top center no-repeat;}
+#logo:hover #logo2{display:none;}
+
+
+.FlattrButton{margin-top:7px;}
+#twitter{margin: 7px 17px 0px 0px;}
+#fb-root{margin-top: 7px;}
+
+#footer{margin-top: 100px; font-size: .7em;}
+#footer-logo img:hover{background: url(gnome-small.png) top center no-repeat;}
+
+#feedback{margin-top: 10px;}
+#credits{margin-top:10px;}
+	</style>
+
+<!--FLATTR-->
+<script type="text/javascript">
+/* <![CDATA[ */
+    (function() {
+        var s = document.createElement('script'), t = document.getElementsByTagName('script')[0];
+        s.type = 'text/javascript';
+        s.async = true;
+        s.src = 'http://api.flattr.com/js/0.6/load.js?mode=auto';
+        t.parentNode.insertBefore(s, t);
+    })();
+/* ]]> */
+</script>
+<!--TWITTER-->
+<script type="text/javascript" src="http://platform.twitter.com/widgets.js"></script>
+</head>
+
+<body>
+<div id="main">
+<div id="top">
+
+<div id="social-right">
+<a class="FlattrButton" style="display:none;" href="http://taikonome.com"></a>
+<noscript><a href="http://flattr.com/thing/372076/Taikonome" target="_blank">
+<img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a></noscript>
+
+<div id="twitter"><a href="http://twitter.com/share" class="twitter-share-button" data-count="horizontal">Tweet</a></div>
+
+<div id="fb-root"></div><script src="http://connect.facebook.net/en_US/all.js#xfbml=1"></script><fb:like href="taikonome.com" send="true" layout="button_count" width="120" show_faces="false" action="like" font=""></fb:like>
+</div>
+
+<div id="header"><a id="logo" href="http://taikonome.com"><img id="logo2" src="taikonome-logo.png" /></a></div>
+
+<div id="social-left">
+</div>
+
+</div>
+<div style="clear:both;"></div>
+<div id="metronome">
+	<div id="altContent">
+		<p>Alternative content</p>
+		<p><a href="http://www.adobe.com/go/getflashplayer"><img 
+			src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif" 
+			alt="Get Adobe Flash player" /></a></p>
+	</div>
+</div>
+<div id="content">
+  <div id="help">
+    <p><b>Click</b> or <b>drag</b> your mouse to edit the beats.</p>
+	<p>Version 0.3: Looking for <i>inspiration</i>?  <b>Generate</b> a beat randomly or from a text string.</p>
+    <p>Version 0.2: Now with <i>hash tags!</i>  Your beats get <b>saved</b> in the url string.<br />
+	You can use your browser's back button to <b>undo</b> your changes.</p>
+  </div>
+
+<div id="footer">
+<div id="footer-logo"><img src="gnome-stand-small.png" /></div>
+<div id="feedback">
+<a href="http://github.com/kristi/taikonome">code.</a> 
+<a href='&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#107;&#114;&#105;&#115;&#116;&#105;&#46;&#116;&#97;&#105;&#107;&#111;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;'>feedback.</a> 
+<a href="https://github.com/kristi/taikonome/issues">bugs</a>
+</div>
+<div id="credits">
+Thanks to David Cheetham for the taiko sounds, 
+<a href="http://labs.makemachine.net/2010/11/visualizing-notes-and-timing/">Jeremy Brown</a>, 
+<a href="http://code.google.com/p/as3wavsound/">AS3WavSound</a>, 
+<a href="http://www.minimalcomps.com/">MinimalComps</a>, 
+<a href="http://flashdevelop.org">FlashDevelop</a>,
+and 
+<a href="http://almostflan.com">Frank</a>.
+</div>
+</div>
+
+
+</div>
+</div>
+</body>
+</html>
