@@ -297,7 +297,7 @@ package taikonome
 				// Change volume
 				// Use squared to get a better dynamic range
 				// TODO fade volume change so you don't get little pops when changing
-				sample *= Math.pow(_volume.value / 60, 1.8); // 1.8 seems ok experimentally
+				sample *= Math.pow(_volume.value / 100, 1.8) * 2; // 1.8 seems ok experimentally
 				
 				event.data.writeFloat( sample * .8 ); //L?
 				event.data.writeFloat( sample * .8 ); //R?
@@ -533,7 +533,8 @@ package taikonome
 		public function setRandom(event:Event=null):void {
 			var b:ByteArray = new ByteArray();
 			var v:Vector.<int> = new Vector.<int>();
-			var p:Vector.<Number> = new <Number>[.8,.5,.5,.5, .6,.5,.5,.5, .6,.5,.5,.5, .6,.5,.5,.5, 
+			// Note probabilities
+			var p:Vector.<Number> = new <Number>[.8, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, 
 			                                     .7, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, ];
 			_doUpdateHash = false;
 			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
