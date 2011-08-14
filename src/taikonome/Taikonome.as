@@ -158,8 +158,8 @@ package taikonome
 		 * If arg is null, read the current hash.
 		 * @param	arg
 		 */
-		public function updateURLVars(arg:URLVariables = null):void {
-			trace(updateURLVars);
+		public function pushURLVars(arg:URLVariables = null):void {
+			trace(pushURLVars);
 			var str:String;
 			if (arg == null) {
 				str = getExternalHash();
@@ -209,7 +209,7 @@ package taikonome
 				}
 			}
 			if (pushChanges) {
-				updateURLVars(arg);
+				pushURLVars(arg);
 			}
 		}
 		
@@ -224,7 +224,7 @@ package taikonome
 			if (_varChangeTimer != 0) {
 				clearTimeout(_varChangeTimer);
 			}
-			_varChangeTimer = setTimeout(updateURLVars, 200, arg);
+			_varChangeTimer = setTimeout(pushURLVars, 200, arg);
 		}
 		
 		
