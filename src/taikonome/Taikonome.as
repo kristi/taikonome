@@ -58,6 +58,7 @@ package taikonome
 	[SWF(backgroundColor="0xFDF8F2",width="770",height="300",frameRate="60")]
 	public class Taikonome extends Sprite
 	{
+		public static const VERSION:String = "0.3";
 		public static const BUFFER_SIZE:int = 8192;
 		public static const SAMPLE_RATE:int = 44100;
 		public static const MILS_PER_SEC:int = 1000;
@@ -527,7 +528,7 @@ package taikonome
 			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
 			button = new PushButton(this, 450, y, 'Generate from text', setFromInput);
 			
-			label = new Label(this, 660, y+5, 'Taikonome v0.3');
+			label = new Label(this, 660, y+5, 'Taikonome v'+VERSION);
 		}
 		public function setRandom(event:Event=null):void {
 			var b:ByteArray = new ByteArray();
