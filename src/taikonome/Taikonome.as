@@ -403,7 +403,7 @@ package taikonome
 		 */
 		protected function onTempoChange(event:Event):void
 		{
-			_tempo = _slider.value;
+			_tempo = Math.round(_slider.value);
 			_isTempoChanged = true;
 		}
 		
