@@ -9,6 +9,7 @@ package taikonome
 	import flash.display.StageAlign;
 	import flash.display.StageScaleMode;
 	import flash.events.Event;
+	import flash.events.FocusEvent;
 	import flash.events.MouseEvent;
 	import flash.events.SampleDataEvent;
 	import flash.external.ExternalInterface;
@@ -523,6 +524,7 @@ package taikonome
 			_inputText = new InputText(this, 160, y, 'Input some text', setFromInput);
 			_inputText.height = 20;
 			_inputText.width = 285;
+			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
 			button = new PushButton(this, 450, y, 'Generate from text', setFromInput);
 			
 			label = new Label(this, 660, y+5, 'Taikonome v0.3');
@@ -545,6 +547,10 @@ package taikonome
 			_doUpdateHash = true;
 		}
 		
+		public function clearInput(event:Event=null):void {
+			_inputText.text = "";
+			_inputText.removeEventListener(FocusEvent.FOCUS_IN, clearInput);
+		}
 		public function setFromInput(event:Event=null):void {
 			//hashToBeat(_inputText.text);
 			setExternalHash(_inputText.text);
