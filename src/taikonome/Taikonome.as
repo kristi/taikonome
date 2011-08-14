@@ -99,8 +99,8 @@ package taikonome
 		protected var _playButton:PushButton;
 		protected var _inputText:InputText;
 		
-		protected var _slider:HUISlider
-		protected var _volume:HUISlider
+		protected var _tempoSlider:HUISlider
+		protected var _volumeSlider:HUISlider
 		
 		protected var _doUpdateHash:Boolean = true;
 		protected var _hashChangeTime:uint = 0;
@@ -297,7 +297,7 @@ package taikonome
 				// Change volume
 				// Use squared to get a better dynamic range
 				// TODO fade volume change so you don't get little pops when changing
-				sample *= Math.pow(_volume.value / 100, 1.8) * 2; // 1.8 seems ok experimentally
+				sample *= Math.pow(_volumeSlider.value / 100, 1.8) * 2; // 1.8 seems ok experimentally
 				
 				event.data.writeFloat( sample * .8 ); //L?
 				event.data.writeFloat( sample * .8 ); //R?
@@ -403,7 +403,7 @@ package taikonome
 		 */
 		protected function onTempoChange(event:Event):void
 		{
-			_tempo = Math.round(_slider.value);
+			_tempo = Math.round(_tempoSlider.value);
 			_isTempoChanged = true;
 		}
 		
@@ -495,19 +495,19 @@ package taikonome
 			_timeClockLabel = new Label(this, 40, y, 'Time: 00:00:00');
 			//_musicClockLabel = new Label(this, 150, y, 'Music Time: 01:04:16');
 			
-			_volume = new HUISlider(this, 130, y, 'Volume', null);
-			_volume.minimum = 0;
-			_volume.maximum = 100;
-			_volume.value = 50;
-			_volume.width = 160;
-			_volume.labelPrecision = 0;
+			_volumeSlider = new HUISlider(this, 130, y, 'Volume', null);
+			_volumeSlider.minimum = 0;
+			_volumeSlider.maximum = 100;
+			_volumeSlider.value = 50;
+			_volumeSlider.width = 160;
+			_volumeSlider.labelPrecision = 0;
 			
-			_slider = new HUISlider(this, 270, y, 'Tempo', onTempoChange);
-			_slider.minimum = 20;
-			_slider.maximum = 400;
-			_slider.value = _tempo = 160;
-			_slider.width = 250;
-			_slider.labelPrecision = 0;
+			_tempoSlider = new HUISlider(this, 270, y, 'Tempo', onTempoChange);
+			_tempoSlider.minimum = 20;
+			_tempoSlider.maximum = 400;
+			_tempoSlider.value = _tempo = 160;
+			_tempoSlider.width = 250;
+			_tempoSlider.labelPrecision = 0;
 			
 			_playButton = new PushButton(this, 507, y, 'Play', togglePlayback);
 			_playButton.toggle = true;
