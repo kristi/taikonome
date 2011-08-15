@@ -1,10 +1,13 @@
 package taikonome {
+	import flash.events.Event;
 	import flash.utils.ByteArray;
 	import flash.utils.Endian;
 	import org.as3wavsound.sazameki.core.AudioSamples;
 	import org.as3wavsound.sazameki.core.AudioSetting;
 	import org.as3wavsound.sazameki.format.wav.chunk.WavdataChunk;
 	import org.as3wavsound.sazameki.format.wav.Wav;
+	import fr.kikko.lab.ShineMP3Encoder;
+	import flash.events.ErrorEvent;
 	
 	
 	/**
@@ -22,8 +25,6 @@ package taikonome {
 		 */
 		public static function encodeFloatByteArray( samples:ByteArray, channels:uint = 2, sampleRate:uint = 44100, bitRate:uint = 16):ByteArray {
 			samples.position = 0;
-			trace("samples.length", samples.length);
-			trace("samples.bytesAvailable", samples.bytesAvailable);
 			
 			// 32 bit floats = 4 bytes per float
 			// 16 bit shorts = 2 bytes per short
