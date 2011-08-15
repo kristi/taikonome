@@ -103,7 +103,8 @@ package taikonome
 		protected var _tempoSlider:HUISlider
 		protected var _volumeSlider:HUISlider
 		
-		protected var _doUpdateHash:Boolean = true;
+		protected var _canNoteCallbackUpdateHash:Boolean = true;
+		protected var _wasUpdatePushed:Boolean = false;
 		protected var _hashChangeTimer:uint = 0;
 		protected var _varChangeTimer:uint = 0;
 		protected var _base64Encoder:Base64Encoder;
@@ -146,20 +147,31 @@ package taikonome
 			
 			return s;
 		}
-		public function pushExternalBeatHash(h:String=null):void {
+		
+		public function setExternalHash(str:String = null):void {
+			if (str != null) {
+				_wasUpdatePushed = true;
+				ExternalInterface.call("setHash", str);
+			}
+		}
+		/**
+		 * Push beat updates back out to the url
+		 * @param	h
+		 */
+		public function pushExternalBeatHash(h:String = null):void {
 			if (h == null) {
 				h = beatToHash();
 			}
-			var s:String = "#v=" + VERSION.replace(/\./,"_") + "&b=" + _tempo.toString() + "&h=" + sanitize(h);
-			ExternalInterface.call("setHash",s);
+			var str:String = "#v=" + VERSION.replace(/\./,"_") + "&b=" + _tempo.toString() + "&h=" + sanitize(h);
+			setExternalHash(str);
 		}
 		/**
+		 * Push variable updates back out to the url
 		 * Updates everything EXCEPT the beat hash.
 		 * If arg is null, read the current hash.
 		 * @param	arg
 		 */
 		public function pushURLVars(arg:URLVariables = null):void {
-			trace(pushURLVars);
 			var str:String;
 			if (arg == null) {
 				str = getExternalHash();
@@ -170,14 +182,25 @@ package taikonome
 			}
 			arg.v = VERSION.replace(/\./,"_");
 			arg.b = _tempo.toString();
-			//_doUpdateHash = false;
-			ExternalInterface.call("setHash", arg.toString());
-			//_doUpdateHash = true;
+			
+			setExternalHash(arg.toString());
+		}
+		
+		// Called when the url hash has changed
+		public function onExternalHashChange():void {
+			trace("onExternalHashChange");
+			updateFromExternalHash();
 		}
 
-		// Called when the url hash has changed
-		public function updateFromExternalHash(pushChanges:Boolean=true):void {
+		// Update taikonome vars from hash
+		public function updateFromExternalHash():void {
+			trace("updateFromExternalHash");
 			var s:String = getExternalHash();
+			if (s == null) {
+				_canNoteCallbackUpdateHash = false;
+				clearBeat();
+				_canNoteCallbackUpdateHash = true;
+			}
 			// Parse string
 			// Format: "v=0.3&b=160&h=HaShCoDe"
 			var arg:URLVariables = new URLVariables(s);
@@ -208,9 +231,6 @@ package taikonome
 					_isTempoChanged = true;
 				}
 			}
-			if (pushChanges) {
-				pushURLVars(arg);
-			}
 		}
 		
 		// Called if there have not been any beat changes for the last 300ms
@@ -236,9 +256,9 @@ package taikonome
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 			createDisplay();
 			
-			ExternalInterface.addCallback("flashHash", updateFromExternalHash);
-			// force beat update from url
-			updateFromExternalHash(false);
+			ExternalInterface.addCallback("flashHash", onExternalHashChange);
+			// Force update from url
+			updateFromExternalHash();
 		}
 		
 		
@@ -515,7 +535,7 @@ package taikonome
 				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(...u):void {
-						if (_doUpdateHash) {
+						if (_canNoteCallbackUpdateHash) {
 							batchBeatHashUpdate();
 						}
 					});
@@ -611,7 +631,7 @@ package taikonome
 			// Note probabilities
 			var p:Vector.<Number> = new <Number>[.8, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, 
 			                                     .7, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, ];
-			_doUpdateHash = false;
+			_canNoteCallbackUpdateHash = false;
 			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
 				_shimeNoteButton[i].selected = (Math.random() < p[i]);
 			}
@@ -621,7 +641,7 @@ package taikonome
 			//}
 			//var h:String = MD5.hashBytes(b);
 			pushExternalBeatHash(beatToHash());
-			_doUpdateHash = true;
+			_canNoteCallbackUpdateHash = true;
 		}
 		
 		public function clearInput(event:Event=null):void {
@@ -722,6 +742,7 @@ package taikonome
 			
 			return str;
 		}
+		// rename to sanitizeBeatHash
 		public function sanitize(str:String):String {
 			if (str == null || str.length == 0) { return str; }
 			str = StringUtil.restrict(str, "a-zA-Z0-9\\-_");
@@ -738,14 +759,14 @@ package taikonome
 			if (str == null) { return str; }
 			if (32 % bits != 0) { throw new Error("bits must be factor of 32"); };
 			
-			_doUpdateHash = false;
+			_canNoteCallbackUpdateHash = false;
 			
 			if (str.length == 0) {
 				// Set all to zero
 				for (i = 0; i < _shimeNoteButton.length; i++) {
 					_shimeNoteButton[i].selected = false;
 				}
-				_doUpdateHash = true;
+				_canNoteCallbackUpdateHash = true;
 				return str;
 			}
 			
@@ -814,7 +835,7 @@ package taikonome
 					}
 				}
 			}
-			_doUpdateHash = true;
+			_canNoteCallbackUpdateHash = true;
 			return str;
 		}
 	}
