@@ -79,6 +79,8 @@ package taikonome
 		public static const ALPHA_PLAY:Number = 0.8;
 		public static const ALPHA_OFF:Number = 0.3;
 		
+		public static const BITS_PER_BEAT:int = 1;
+		
 		public var eighthnotes :Boolean;
 		public var sxthnnotes :Boolean;
 		
@@ -734,7 +736,7 @@ package taikonome
 		/**
 		 * Convert beats into hash string
 		 */
-		public function beatToHash(bits:uint = 1):String {
+		public function beatToHash(bits:uint = BITS_PER_BEAT):String {
 			if (32 % bits != 0) { throw new Error("bits must be factor of 32"); };
 			var str:String;
 			// Convert vector to ByteArray
@@ -785,7 +787,7 @@ package taikonome
 		/**
 		 * Convert a hash string into beats
 		 */
-		public function hashToBeat(str:String = null, bits:int = 1):String {
+		public function hashToBeat(str:String = null, bits:int = BITS_PER_BEAT):String {
 			var b:ByteArray;
 			var i:int = 0;
 			var num:uint;
@@ -803,8 +805,6 @@ package taikonome
 			}
 			
 			str = sanitizeBeatHash(str);
-			
-			
 			
 			// Undo url substitutions
 			var char62:RegExp = /-/g; 
@@ -827,16 +827,11 @@ package taikonome
 			}
 			var inflateSuccess:Boolean = false;
 			if (base64Success) {
-				//throw(new Error("Unable to decode hash string"));
-				
-				
-				
 				// Decompress
 				try {
 					b.inflate();
 					inflateSuccess = true;
 				} catch (e:Error) {
-					// Do nothing
 					// Probably random user input string
 				}
 			}
@@ -860,10 +855,10 @@ package taikonome
 			while (b.bytesAvailable >= 4) {
 				num = b.readUnsignedInt();
 				for (var shift:int = 0; shift < 32; shift+=bits) {
-					var val:Boolean = ((num >> shift) & mask) > 0;
+					var val:Boolean = ((num >>> shift) & mask) > 0;
 					if (i < len) { 
-						_shimeNoteButton[i++].selected = val;
-					} else if (val) {
+						_shimeNoteButton[i++].selected = (val > 0);
+					} else if (val > 0) {
 						// Toggle selected if value is true
 						_shimeNoteButton[i % len].selected = !_shimeNoteButton[i++ % len].selected;
 					}
