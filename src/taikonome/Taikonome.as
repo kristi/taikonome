@@ -188,7 +188,12 @@ package taikonome
 			if (h == null) {
 				h = beatToHash();
 			}
+			var str:String = _currentHash;
 			var arg:URLVariables = new URLVariables();
+			if (str != null && str.length > 0) {
+				arg.decode(str);
+			}
+			
 			arg.v = VERSION.replace(/\./, "_");
 			arg.b = _tempo.toString();
 			arg.h = sanitizeBeatHash(h);

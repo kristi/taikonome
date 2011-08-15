@@ -18,7 +18,7 @@ package taikonome
 		public var colorActive:uint = 0x00C6FF;
 		
 		public var index:int = 0;
-		public var state:int = 0;
+		public var level:int = 0;  // 0 off, 1 low, 2 normal, 3 accented
 		
 		/**
 		 * Constructor
@@ -38,16 +38,6 @@ package taikonome
 			this.label = label;
 			// Make note buttons togglable
 			this.toggle = true;
-		}
-		
-		// Toggle the button selection and update button
-		public function toggleSelect():void {
-			this.selected = !this.selected;
-			//_selected = !_selected;
-			
-			_down = _selected;
-			drawFace();
-			_face.filters = [getShadow(1, _selected)];
 		}
 		
 		// Update button face when changing the selected value
