@@ -2,3 +2,8 @@ bin/*.swf
 bin/*.png
 img
 obj
+bin/favicon.gif
+bin/js/
+bin/test.html
+src/taikonome/Sandbox.as
+src/taikonome/Util.as
