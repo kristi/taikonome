@@ -16,16 +16,9 @@
 	<script type="text/javascript">
 	var flashChange = false;
 	var getHash = function() {
-		hash = location.hash;
-		//if(hash==null || hash==undefined|| hash=='') { 
-		//	return '#';
-		//}
-		return hash;
+		return location.hash;
 	}
 	var setHash = function(hash) {
-		if(hash==null || hash==undefined|| hash=='') {
-		    return;
-		}
 		flashChange = true;
 		location.hash = hash;
 	}
