@@ -188,13 +188,11 @@ package taikonome
 		
 		// Called when the url hash has changed
 		public function onExternalHashChange():void {
-			trace("onExternalHashChange");
 			updateFromExternalHash();
 		}
 
-		// Update taikonome vars from hash
+		// Update taikonome vars and beat from hash
 		public function updateFromExternalHash():void {
-			trace("updateFromExternalHash");
 			var s:String = getExternalHash();
 			if (s == null) {
 				_canNoteCallbackUpdateHash = false;
@@ -213,9 +211,9 @@ package taikonome
 			if (! arg.v) {
 				//trace("[Taikonome]Warning: no version param");
 			}
-			else if (arg.v != VERSION) {
+			else if (arg.v != VERSION.replace(/\./,"_")) {
 				//TODO detect old versions?
-				//trace("[Taikonome]Warning: version string does not match")
+				trace("[Taikonome]Warning: version string does not match")
 			}
 			
 			// Beat hash
