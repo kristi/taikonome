@@ -68,7 +68,6 @@ package taikonome
 		public static const WIDTH:int = 700;
 		public static const NOTEBUTTON_HEIGHT:int = 25;
 		
-		public static const NOTE_DURATION  :int = 700; // in samples
 		public static const LATENCY_FUDGE:int = 30; // milliseconds
 		public static const TIME_3_4   :String = '3/4';
 		public static const TIME_4_4   :String = '4/4';
@@ -162,7 +161,7 @@ package taikonome
 			if (h == null) {
 				h = beatToHash();
 			}
-			var str:String = "#v=" + VERSION.replace(/\./,"_") + "&b=" + _tempo.toString() + "&h=" + sanitize(h);
+			var str:String = "#v=" + VERSION.replace(/\./,"_") + "&b=" + _tempo.toString() + "&h=" + sanitizeBeatHash(h);
 			setExternalHash(str);
 		}
 		/**
@@ -342,9 +341,9 @@ package taikonome
 						_step = n;
 						
 						if( _step % 24 == 0 ) {
-							_noteQueue.push( new Note( NOTE_DURATION, 1760 ) );
+							_noteQueue.push( new Note() );
 						} else if( _step % 8 == 0 ) {
-							_noteQueue.push( new Note( NOTE_DURATION * .25, 880, .5 ) );
+							_noteQueue.push( new Note() );
 						}
 					}
 				}
@@ -362,16 +361,16 @@ package taikonome
 						{
 							// -- whole note
 							if( _step % 128 == 0 ) {
-								_noteQueue.push( new Note( NOTE_DURATION, 1760 ) );
+								_noteQueue.push( new Note() );
 								// -- quater
 							} else if( _step % 32 == 0 )  {
-								_noteQueue.push( new Note( NOTE_DURATION, 880, .7 ) );
+								_noteQueue.push( new Note() );
 								// -- 8th notes
 							} else if( eighthnotes && _step % 16 == 0 )  {
-								_noteQueue.push( new Note( NOTE_DURATION, 440, .5 ) );
+								_noteQueue.push( new Note() );
 								// -- 16th notes
 							}else if( ( _step % 8 == 0  ) && sxthnnotes ) {
-								_noteQueue.push( new Note( NOTE_DURATION * .5, 220, .5 ) );
+								_noteQueue.push( new Note() );
 							}
 						}
 					}
@@ -409,17 +408,7 @@ package taikonome
 			
 			_noteQueue = temp;
 		}
-		protected function onSampleDataDummy(event:SampleDataEvent):void
-		{
-			var bytes:ByteArray = new ByteArray();
-			
-			for (var i:int = 0; i < BUFFER_SIZE; i++)
-			{
-				bytes.writeFloat(0);
-			}
-			
-			event.data.writeBytes(bytes);
-		}
+		
 		
 		/**
 		 * Updates the grid of squares to reflect the current 1/8, 1/4 and measure
@@ -663,10 +652,8 @@ package taikonome
 		}
 		
 		public function clearBeat(event:Event=null):void {
-			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++)
+			for each(var button:NoteButton in _shimeNoteButton)
 			{
-				button = _shimeNoteButton[i];
 				button.selected = false;
 			}
 		}
@@ -740,8 +727,12 @@ package taikonome
 			
 			return str;
 		}
-		// rename to sanitizeBeatHash
-		public function sanitize(str:String):String {
+		/**
+		 * Remove invalid characters from the beat hash
+		 * @param	str
+		 * @return
+		 */
+		public function sanitizeBeatHash(str:String):String {
 			if (str == null || str.length == 0) { return str; }
 			str = StringUtil.restrict(str, "a-zA-Z0-9\\-_");
 			return str;
@@ -761,14 +752,12 @@ package taikonome
 			
 			if (str.length == 0) {
 				// Set all to zero
-				for (i = 0; i < _shimeNoteButton.length; i++) {
-					_shimeNoteButton[i].selected = false;
-				}
+				clearBeat();
 				_canNoteCallbackUpdateHash = true;
 				return str;
 			}
 			
-			str = sanitize(str);
+			str = sanitizeBeatHash(str);
 			
 			
 			

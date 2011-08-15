@@ -19,7 +19,7 @@ package taikonome
 		public const WavFile:Class;
 		public const sound:WavSound = new WavSound(new WavFile() as ByteArray);
 		
-		public function Note( duration:int, freq:Number, maxAmplitude:Number = 1 )
+		public function Note( maxAmplitude:Number = 1 )
 		{
 			_index = 0;
 			_duration = sound.samples.length;
@@ -32,7 +32,8 @@ package taikonome
 		}
 		
 		public function getNextFloat():Number {
-			return _index + 1 < _duration ? sound.samples.left[_index++]: 0;
+			// TODO Stereo sounds
+			return _index + 1 < _duration ? _amp * sound.samples.left[_index++]: 0;
 		}
 		
 		public function get frequency():Number {
@@ -45,6 +46,7 @@ package taikonome
 		
 		// -- do a little fade out here to prevent pop
 		public function get amplitude():Number {
+			//TODO fix and use this
 			return ( 1 - ( _index / _duration ) ) * _amp;
 		}
 
