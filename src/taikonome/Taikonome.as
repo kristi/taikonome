@@ -1,5 +1,4 @@
-package taikonome
-{
+package taikonome {
 	import com.adobe.crypto.MD5;
 	import com.bit101.components.HUISlider;
 	import com.bit101.components.InputText;
@@ -30,7 +29,7 @@ package taikonome
 	/**
 	 * Taikonome (http://taikonome.com)
 	 * A Simple Taiko Metronome
-	 * 
+	 *
 	 * Based on note visualization code by Jeremy Brown
 	 * http://labs.makemachine.net/2010/11/visualizing-notes-and-timing/
 	 * GUI uses MinimalComponents by Keith Peters
@@ -39,50 +38,50 @@ package taikonome
 	 * and based on code by Takaaki Yamazaki
 	 * http://code.google.com/p/as3wavsound/
 	 * Taiko sound files generously provided by David Cheetham
-	 * 
+	 *
 	 * Open Source License: AGPL (http://www.gnu.org/licenses/agpl.txt)
 	 * (Distributions and application servers are required to release source code)
-	 * 
+	 *
 	 * Copyright (C) 2011 Kristi Tsukida
-     *
+	 *
 	 * This program is free software: you can redistribute it and/or modify
 	 * it under the terms of the GNU Affero General Public License as published by
 	 * the Free Software Foundation, either version 3 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU Affero General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU Affero General Public License
 	 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	 *
 	 * @author Kristi Tsukida
 	 */
 	[SWF(backgroundColor="0xFDF8F2",width="770",height="500",frameRate="60")]
-	public class Taikonome extends Sprite
-	{
+	
+	public class Taikonome extends Sprite {
 		public static const VERSION:String = "0.4";
 		public static const BUFFER_SIZE:int = 8192;
 		public static const SAMPLE_RATE:int = 44100;
 		public static const MILS_PER_SEC:int = 1000;
-		public static const SECONDS_PER_MINUTE :int = 60;
+		public static const SECONDS_PER_MINUTE:int = 60;
 		
 		public static const WIDTH:int = 700;
 		public static const NOTEBUTTON_HEIGHT:int = 25;
 		
 		public static const LATENCY_FUDGE:int = 30; // milliseconds
-		public static const TIME_3_4   :String = '3/4';
-		public static const TIME_4_4   :String = '4/4';
+		public static const TIME_3_4:String = '3/4';
+		public static const TIME_4_4:String = '4/4';
 		
 		public static const ALPHA_PLAY:Number = 0.8;
 		public static const ALPHA_OFF:Number = 0.3;
 		
 		public static const BITS_PER_BEAT:int = 1;
 		
-		public var eighthnotes :Boolean;
-		public var sxthnnotes :Boolean;
+		public var eighthnotes:Boolean;
+		public var sxthnnotes:Boolean;
 		
 		protected var _outsound:Sound;
 		protected var _channel:SoundChannel;
@@ -91,9 +90,9 @@ package taikonome
 		
 		protected var _tempo:int;
 		protected var _volume:Number;
-		protected var _signature :String;
-		protected var _step   :int;
-		protected var _noteQueue  :Array;
+		protected var _signature:String;
+		protected var _step:int;
+		protected var _noteQueue:Array;
 		protected var _isTempoChanged:Boolean = false;
 		
 		protected var _quarterNoteButton:Vector.<NoteButton>;
@@ -126,15 +125,14 @@ package taikonome
 		protected var _wavConverted:Boolean = false;
 		
 		// Debug clicking
-		public function onClickStage(e:MouseEvent):void{
-			trace(e.target,e.target.name);
+		public function onClickStage(e:MouseEvent):void {
+			trace(e.target, e.target.name);
 		}
 		
 		/**
 		 * Constructor
 		 */
-		public function Taikonome()
-		{
+		public function Taikonome(){
 			eighthnotes = true;
 			sxthnnotes = false;
 			_signature = TIME_4_4;
@@ -150,47 +148,54 @@ package taikonome
 			else
 				addEventListener(Event.ADDED_TO_STAGE, init);
 		}
-
+		
 		public function getExternalHash():String {
 			var s:String = null;
-			try { 
+			try {
 				s = ExternalInterface.call("getHash");
-			} catch(error:Error) {
+			} catch (error:Error){
 				trace(error);
 			}
-			if (s == null) { return null; };
+			if (s == null){
+				return null;
+			}
+			;
 			// Strip leading # sign
 			s = s.replace(/^#/, '');
-			if (s.length <= 1) { return null; };
+			if (s.length <= 1){
+				return null;
+			}
+			;
 			
 			return s;
 		}
 		
 		public function setExternalHash(str:String = null):void {
 			
-			if (str != null && str.length>0 ) {
+			if (str != null && str.length > 0){
 				var currentHash:String = (_currentHash) ? _currentHash : '';
-				currentHash = currentHash.replace(/^#/,'');
+				currentHash = currentHash.replace(/^#/, '');
 				var newHash:String = str;
 				
 				newHash = newHash.replace(/%5F/g, "_").replace(/%2D/g, "-");
-				if (newHash != currentHash) {
+				if (newHash != currentHash){
 					_currentHash = newHash;
 					ExternalInterface.call("setHash", newHash);
 				}
 			}
 		}
+		
 		/**
 		 * Push beat updates back out to the url
 		 * @param	h
 		 */
 		public function pushExternalBeatHash(h:String = null):void {
-			if (h == null) {
+			if (h == null){
 				h = beatToHash();
 			}
 			var str:String = _currentHash;
 			var arg:URLVariables = new URLVariables();
-			if (str != null && str.length > 0) {
+			if (str != null && str.length > 0){
 				arg.decode(str);
 			}
 			
@@ -200,19 +205,21 @@ package taikonome
 			//var str:String = "v=" +  + "&b=" + _tempo.toString() + "&h=" + sanitizeBeatHash(h);
 			setExternalHash(arg.toString());
 		}
+		
 		public function getURLVars(arg:URLVariables = null):URLVariables {
 			var str:String;
-			if (arg == null) {
+			if (arg == null){
 				str = _currentHash;
 				arg = new URLVariables();
-				if (str != null && str.length > 0) {
+				if (str != null && str.length > 0){
 					arg.decode(str);
 				}
 			}
-			arg.v = VERSION.replace(/\./,"_");
+			arg.v = VERSION.replace(/\./, "_");
 			arg.b = _tempo.toString();
 			return arg;
 		}
+		
 		/**
 		 * Push variable updates back out to the url
 		 * Updates everything EXCEPT the beat hash.
@@ -227,14 +234,14 @@ package taikonome
 		public function onExternalHashChange():void {
 			updateFromExternalHash();
 		}
-
+		
 		// Update taikonome vars and beat from hash
 		public function updateFromExternalHash():void {
 			
 			var s:String = getExternalHash();
 			_currentHash = s;
 			
-			if (s == null || s.length == 0) {
+			if (s == null || s.length == 0){
 				_canNoteCallbackUpdateHash = false;
 				clearBeat();
 				_canNoteCallbackUpdateHash = true;
@@ -244,21 +251,20 @@ package taikonome
 			// Format: "v=0.3&b=160&h=HaShCoDe"
 			var arg:URLVariables = new URLVariables(s);
 			
-			if (arg == null) {
+			if (arg == null){
 				trace("[Taikonome]Warning:Couldn't parse hash", s);
-				return; 
+				return;
 			}
 			// Version check
-			if (! arg.v) {
+			if (!arg.v){
 				//trace("[Taikonome]Warning: no version param");
-			}
-			else if (arg.v != VERSION.replace(/\./,"_")) {
+			} else if (arg.v != VERSION.replace(/\./, "_")){
 				//TODO detect old versions?
 				trace("[Taikonome]Warning: version string does not match")
 			}
 			
 			// Beat hash
-			if (arg.h) {
+			if (arg.h){
 				hashToBeat(arg.h);
 			} else {
 				_canNoteCallbackUpdateHash = false;
@@ -266,9 +272,9 @@ package taikonome
 				_canNoteCallbackUpdateHash = true;
 			}
 			// Tempo (in bps)
-			if (arg.b) {
+			if (arg.b){
 				var n:Number = Number(arg.b);
-				if(!isNaN(n)) {
+				if (!isNaN(n)){
 					_tempoSlider.value = n;
 					_tempo = Math.round(_tempoSlider.value);
 					_isTempoChanged = true;
@@ -278,24 +284,23 @@ package taikonome
 		
 		// Called if there have not been any beat changes for the last 300ms
 		public function batchBeatHashUpdate(str:String = null):void {
-			if (_hashChangeTimer != 0) {
+			if (_hashChangeTimer != 0){
 				clearTimeout(_hashChangeTimer);
 			}
-			if (str == null) {
+			if (str == null){
 				str = beatToHash();
 			}
 			_hashChangeTimer = setTimeout(pushExternalBeatHash, 300, str);
 		}
+		
 		public function batchVarHashUpdate(arg:URLVariables = null):void {
-			if (_varChangeTimer != 0) {
+			if (_varChangeTimer != 0){
 				clearTimeout(_varChangeTimer);
 			}
 			_varChangeTimer = setTimeout(pushURLVars, 400, arg);
 		}
 		
-		
-		private function init(e:Event = null):void
-		{
+		private function init(e:Event = null):void {
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			// entry point
 			stage.align = StageAlign.TOP;
@@ -315,14 +320,10 @@ package taikonome
 		/**
 		 * Toggles between play and stop
 		 */
-		protected function togglePlayback(event:Event = null):void
-		{
-			if (_isPlaying)
-			{
+		protected function togglePlayback(event:Event = null):void {
+			if (_isPlaying){
 				stop();
-			}
-			else
-			{
+			} else {
 				play();
 			}
 		}
@@ -330,10 +331,8 @@ package taikonome
 		/**
 		 * Stops playback, updates UI
 		 */
-		protected function stop():void
-		{
-			if (_channel && _isPlaying)
-			{
+		protected function stop():void {
+			if (_channel && _isPlaying){
 				_isPlaying = false;
 				_playButton.label = 'Play';
 				_outsound.removeEventListener(SampleDataEvent.SAMPLE_DATA, onSampleData);
@@ -346,10 +345,8 @@ package taikonome
 		/**
 		 * Starts playback, updates UI
 		 */
-		protected function play():void
-		{
-			if (!_isPlaying)
-			{
+		protected function play():void {
+			if (!_isPlaying){
 				_isPlaying = true;
 				_playButton.label = 'Stop';
 				addEventListener(Event.ENTER_FRAME, onPlaybackEnterFrame);
@@ -361,18 +358,15 @@ package taikonome
 		/**
 		 * Fill the sound buffer with data
 		 */
-		public function onSampleData( event:SampleDataEvent=null, buffer_size:uint=BUFFER_SIZE ):void
-		{
+		public function onSampleData(event:SampleDataEvent = null, buffer_size:uint = BUFFER_SIZE):void {
 			var position:int;
-            if (_channel)
-            {
-                // latency is the number of milliseconds it will take from now
-                // for the sound to play.
-                _latency = ((event.position / 44.1) - _channel.position);
-            }
+			if (_channel){
+				// latency is the number of milliseconds it will take from now
+				// for the sound to play.
+				_latency = ((event.position / 44.1) - _channel.position);
+			}
 			
-			for( var i:uint = 0; i < buffer_size; i++ )
-			{
+			for (var i:uint = 0; i < buffer_size; i++){
 				position = event.position + i;
 				
 				// -- hope to find a better way to determine timing vars
@@ -381,18 +375,15 @@ package taikonome
 				var n:int;
 				
 				// -- 4/4 time
-				if( _signature  == TIME_4_4 )
-				{
-					n  = position / ( SAMPLE_RATE / _tempo * SECONDS_PER_MINUTE / 32  );
+				if (_signature == TIME_4_4){
+					n = position / (SAMPLE_RATE / _tempo * SECONDS_PER_MINUTE / 32);
 					
-					if( n != _step )
-					{
+					if (n != _step){
 						_step = n;
-						if (_step % 16 == 0) {
+						if (_step % 16 == 0){
 							// 16 steps per eighth note, 32 eighth notes per line
-							if (_shimeNoteButton[int(_step/16) % 32].selected)
-							{
-								_noteQueue.push( new Note() );
+							if (_shimeNoteButton[int(_step / 16) % 32].selected){
+								_noteQueue.push(new Note());
 							}
 						}
 					}
@@ -400,8 +391,8 @@ package taikonome
 				
 				// -- create the samples, if there are multiple notes in the queue we us addition to merge them
 				var sample:Number = 0;
-				for each( note in _noteQueue )  {
-					if( note.hasNext() ) {
+				for each (note in _noteQueue){
+					if (note.hasNext()){
 						sample += note.getNextFloat();
 					}
 				}
@@ -411,8 +402,8 @@ package taikonome
 				// TODO fade volume change so you don't get little pops when changing
 				sample *= _volume;
 				
-				event.data.writeFloat( sample * .8 ); //L?
-				event.data.writeFloat( sample * .8 ); //R?
+				event.data.writeFloat(sample * .8); //L?
+				event.data.writeFloat(sample * .8); //R?
 			}
 			
 			// -- store left over notes in new array for next iteration
@@ -422,25 +413,22 @@ package taikonome
 			var temp:Array = [];
 			var note:Note;
 			
-			for each( note in _noteQueue ) {
-				if( note.hasNext() ) {
-					temp.push( note );
+			for each (note in _noteQueue){
+				if (note.hasNext()){
+					temp.push(note);
 				}
 			}
 			
 			_noteQueue = temp;
 		}
 		
-		
 		/**
 		 * Updates the grid of squares to reflect the current 1/8, 1/4 and measure
 		 * Updates the timecode clocks
 		 * Not optimized
 		 */
-		protected function onPlaybackEnterFrame(event:Event):void
-		{
-			if (_channel)
-			{
+		protected function onPlaybackEnterFrame(event:Event):void {
+			if (_channel){
 				var samplesElapsed:int = ((_channel.position + LATENCY_FUDGE) / 1000) * SAMPLE_RATE;
 				
 				var eighthNoteLength:int = SAMPLE_RATE * .5 * 60 / _tempo; // eighth note is half a beat
@@ -455,40 +443,28 @@ package taikonome
 				var i:int = 0;
 				
 				// -- current 1/8 note
-				for (i = 0; i < _shimeNoteButton.length; i++)
-				{
-					if (i == eighth)
-					{
+				for (i = 0; i < _shimeNoteButton.length; i++){
+					if (i == eighth){
 						_shimeNoteButton[i].alpha = ALPHA_PLAY
-					}
-					else
-					{
+					} else {
 						_shimeNoteButton[i].alpha = ALPHA_OFF;
 					}
 				}
 				
 				// -- current 1/4 note
-				for (i = 0; i < _quarterNoteButton.length; i++)
-				{
-					if (i == quarter)
-					{
+				for (i = 0; i < _quarterNoteButton.length; i++){
+					if (i == quarter){
 						_quarterNoteButton[i].alpha = ALPHA_PLAY;
-					}
-					else
-					{
+					} else {
 						_quarterNoteButton[i].alpha = ALPHA_OFF;
 					}
 				}
 				
 				// -- current measure
-				for (i = 0; i < _wholeNoteButton.length; i++)
-				{
-					if (i == measure)
-					{
+				for (i = 0; i < _wholeNoteButton.length; i++){
+					if (i == measure){
 						_wholeNoteButton[i].alpha = ALPHA_PLAY;
-					}
-					else
-					{
+					} else {
 						_wholeNoteButton[i].alpha = ALPHA_OFF;
 					}
 				}
@@ -496,19 +472,18 @@ package taikonome
 				// -- clocks
 				_timeClockLabel.text = 'Time: ' + toTimecode(String(Math.floor(_channel.position / 1000 / 60))) + ':' + toTimecode(String(Math.floor(_channel.position / 1000 % 60))) + ':' + toTimecode(String(Math.floor(_channel.position / 10 % 100)));
 				
-				//_musicClockLabel.text = 'Music Time: ' + toTimecode(String(measure + 1)) + ':' + toTimecode(String(quarter + 1)) + ':' + toTimecode(String(eighth + 1));
+					//_musicClockLabel.text = 'Music Time: ' + toTimecode(String(measure + 1)) + ':' + toTimecode(String(quarter + 1)) + ':' + toTimecode(String(eighth + 1));
 			}
 		}
 		
 		/**
 		 * Update the value of the tempo
 		 */
-		protected function onTempoChange(event:Event=null):void
-		{
+		protected function onTempoChange(event:Event = null):void {
 			_tempo = Math.round(_tempoSlider.value);
 			_isTempoChanged = true;
 			// If we call onTempoChange manually, the event is null
-			if (event != null) {
+			if (event != null){
 				// Don't update the url on a manual tempo change
 				// (e.g. from initialization)
 				// Update the url, (but keep the same beat hash)
@@ -516,18 +491,15 @@ package taikonome
 			}
 		}
 		
-		protected function onVolumeChange(event:Event=null):void
-		{
+		protected function onVolumeChange(event:Event = null):void {
 			_volume = Math.pow(_volumeSlider.value / 100, 1.8) * 2;
 		}
-		
 		
 		/**
 		 * Creates rows of squares indicating 1/8, 1/4 and measures
 		 * Also creates button and text fields
 		 */
-		public function createDisplay():void
-		{
+		public function createDisplay():void {
 			var i:int;
 			var w:Number;
 			var noteButton:NoteButton;
@@ -541,8 +513,7 @@ package taikonome
 			_shimeNoteButton = new Vector.<NoteButton>();
 			
 			// -- eighth note squares
-			for (i = 0; i < 32; i++)
-			{
+			for (i = 0; i < 32; i++){
 				noteButton = new NoteButton(_gridContainer);
 				//if (int(i / 8) % 2 ) noteButton.color = 0xCCCCCC;
 				//else noteButton.color = 0xEEEEEE;
@@ -553,8 +524,8 @@ package taikonome
 				noteButton.y = 22;
 				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
-				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(...u):void {
-						if (_canNoteCallbackUpdateHash) {
+				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(... u):void {
+						if (_canNoteCallbackUpdateHash){
 							batchBeatHashUpdate();
 						}
 					});
@@ -565,11 +536,12 @@ package taikonome
 			// -- quarter note squares
 			w = (WIDTH / 16) - padding;
 			_quarterNoteButton = new Vector.<NoteButton>();
-			for (i = 0; i < 16; i++)
-			{
+			for (i = 0; i < 16; i++){
 				noteButton = new NoteButton(_gridContainer);
-				if (i% 2 ) noteButton.color = 0xCCCCCC;
-				else noteButton.color = 0xEEEEEE;
+				if (i % 2)
+					noteButton.color = 0xCCCCCC;
+				else
+					noteButton.color = 0xEEEEEE;
 				noteButton.width = w;
 				noteButton.height = 6;
 				noteButton.y = 10;
@@ -584,8 +556,7 @@ package taikonome
 			// -- whole note squares
 			w = (WIDTH / 4) - padding;
 			_wholeNoteButton = new Vector.<NoteButton>();
-			for (i = 0; i < 4; i++)
-			{
+			for (i = 0; i < 4; i++){
 				//noteButton = getNoteSprite(w, 0x00C6FF);
 				noteButton = new NoteButton(_gridContainer);
 				noteButton.color = 0xEEEEEE;
@@ -633,7 +604,7 @@ package taikonome
 			button = new PushButton(this, 630, y, 'Clear', clearBeat);
 			
 			y = 120;
-			_urlText = new InputText(this, 40, y+2, "url");
+			_urlText = new InputText(this, 40, y + 2, "url");
 			_urlText.width = 360;
 			_urlText.visible = false;
 			_wavButton = new PushButton(this, 520, y, 'Create wav', onSaveClick);
@@ -656,31 +627,32 @@ package taikonome
 			_inputText.opaqueBackground = true;
 			button = new PushButton(this, 450, y, 'Generate from text', setHashFromInputText);
 			
-			label = new Label(this, 660, y+5, 'Taikonome v'+VERSION);
+			label = new Label(this, 660, y + 5, 'Taikonome v' + VERSION);
 		}
-		public function setRandom(event:Event=null):void {
+		
+		public function setRandom(event:Event = null):void {
 			var v:Vector.<int> = new Vector.<int>();
 			// Note probabilities
-			var p:Vector.<Number> = new <Number>[.8, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, 
-			                                     .7, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, ];
+			var p:Vector.<Number> = new <Number>[.8, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .7, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5,];
 			_canNoteCallbackUpdateHash = false;
-			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
+			for (var i:int = 0; i < _shimeNoteButton.length; i++){
 				_shimeNoteButton[i].selected = (Math.random() < p[i]);
 			}
 			// Generate from md5
 			//var b:ByteArray = new ByteArray();
 			//for (var i:int = 0; i < 3; i++) {
-				//b.writeUnsignedInt(Math.random() * uint.MAX_VALUE);
+			//b.writeUnsignedInt(Math.random() * uint.MAX_VALUE);
 			//}
 			//var h:String = MD5.hashBytes(b);
 			pushExternalBeatHash(beatToHash());
 			_canNoteCallbackUpdateHash = true;
 		}
 		
-		public function clearInput(event:Event=null):void {
+		public function clearInput(event:Event = null):void {
 			_inputText.text = "";
 			_inputText.removeEventListener(FocusEvent.FOCUS_IN, clearInput);
 		}
+		
 		public function setHashFromInputText(event:Event = null):void {
 			var str:String = _inputText.text;
 			var space:RegExp = /[ .,]/g;
@@ -693,56 +665,51 @@ package taikonome
 		/**
 		 * Make sure our timecode string has at least two digits
 		 */
-		protected function toTimecode(value:String):String
-		{
-			if (value.length < 2)
-			{
+		protected function toTimecode(value:String):String {
+			if (value.length < 2){
 				return '0' + value;
 			}
 			return value;
 		}
 		
-		public function clearBeat(event:Event=null):void {
-			for each(var button:NoteButton in _shimeNoteButton)
-			{
+		public function clearBeat(event:Event = null):void {
+			for each (var button:NoteButton in _shimeNoteButton){
 				button.selected = false;
 			}
 		}
 		
-		public function setupHorsebeat(event:Event=null):void {
+		public function setupHorsebeat(event:Event = null):void {
 			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++)
-			{
+			for (var i:int = 0; i < 32; i++){
 				button = _shimeNoteButton[i];
 				button.selected = (i % 4 != 1);
 			}
 		}
 		
-		public function setupStraight(event:Event=null):void {
+		public function setupStraight(event:Event = null):void {
 			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++)
-			{
+			for (var i:int = 0; i < 32; i++){
 				button = _shimeNoteButton[i];
 				button.selected = (i % 2 == 0);
 			}
 		}
 		
-		public function setupMatsuri(event:Event=null):void {
+		public function setupMatsuri(event:Event = null):void {
 			var button:NoteButton;
-			for (var i:int = 0; i < _shimeNoteButton.length; i++)
-			{
+			for (var i:int = 0; i < _shimeNoteButton.length; i++){
 				button = _shimeNoteButton[i];
 				button.selected = (i % 4 != 1) && (i % 8 != 7);
 			}
 		}
 		
-		
-		
 		/**
 		 * Convert beats into hash string
 		 */
 		public function beatToHash(bits:uint = BITS_PER_BEAT):String {
-			if (32 % bits != 0) { throw new Error("bits must be factor of 32"); };
+			if (32 % bits != 0){
+				throw new Error("bits must be factor of 32");
+			}
+			;
 			var str:String;
 			// Convert vector to ByteArray
 			var b:ByteArray = new ByteArray();
@@ -751,24 +718,28 @@ package taikonome
 			var s:int = 0;
 			var num_selected:int = 0;
 			var len:int = _shimeNoteButton.length;
-			for (var i:uint = 0; i < len; i ++) {
+			for (var i:uint = 0; i < len; i++){
 				s = uint(_shimeNoteButton[i].selected);
-				if (s > 0) { num_selected++; }
+				if (s > 0){
+					num_selected++;
+				}
 				num += s << (bits * shift++);
-				if (shift * bits >= 32 || i + 1 == len) { // 32-bit ints
+				if (shift * bits >= 32 || i + 1 == len){ // 32-bit ints
 					b.writeInt(num);
 					shift = 0;
 					num = 0;
 				}
 			}
-			if (num_selected == 0) { return ""; }
-			b.deflate();  // Compress byte array
+			if (num_selected == 0){
+				return "";
+			}
+			b.deflate(); // Compress byte array
 			_base64Encoder.encodeBytes(b);
 			str = _base64Encoder.toString();
 			
 			// Substitute chars to make url-friendly
-			var char62:RegExp = /\+/g; 
-			var char63:RegExp = /\//g; 
+			var char62:RegExp = /\+/g;
+			var char63:RegExp = /\//g;
 			str = str.replace(char62, '-');
 			str = str.replace(char63, '_');
 			
@@ -778,17 +749,21 @@ package taikonome
 			
 			return str;
 		}
+		
 		/**
 		 * Remove invalid characters from the beat hash
 		 * @param	str
 		 * @return
 		 */
 		public function sanitizeBeatHash(str:String):String {
-			if (str == null || str.length == 0) { return null; }
+			if (str == null || str.length == 0){
+				return null;
+			}
 			str = StringUtil.trim(str);
 			str = StringUtil.restrict(str, "a-zA-Z0-9\\-_");
 			return str;
 		}
+		
 		/**
 		 * Convert a hash string into beats
 		 */
@@ -797,12 +772,17 @@ package taikonome
 			var i:int = 0;
 			var num:uint;
 			
-			if (str == null) { return str; }
-			if (32 % bits != 0) { throw new Error("bits must be factor of 32"); };
+			if (str == null){
+				return str;
+			}
+			if (32 % bits != 0){
+				throw new Error("bits must be factor of 32");
+			}
+			;
 			
 			_canNoteCallbackUpdateHash = false;
 			
-			if (str.length == 0) {
+			if (str.length == 0){
 				// Set all to zero
 				clearBeat();
 				_canNoteCallbackUpdateHash = true;
@@ -812,64 +792,64 @@ package taikonome
 			str = sanitizeBeatHash(str);
 			
 			// Undo url substitutions
-			var char62:RegExp = /-/g; 
-			var char63:RegExp = /_/g; 
+			var char62:RegExp = /-/g;
+			var char63:RegExp = /_/g;
 			str = str.replace(char62, '+');
 			str = str.replace(char63, '/');
 			
 			// Decode base64
 			var base64Success:Boolean = false;
-			for (i = 0; i <= 2; i++ ) {
+			for (i = 0; i <= 2; i++){
 				try {
 					// String may need trailing equals
 					_base64Decoder.decode(str + StringUtil.repeat('=', i));
 					b = _base64Decoder.toByteArray();
 					base64Success = true;
 					break;
-				} catch (e:Error) {
+				} catch (e:Error){
 					// Do nothing
 				}
 			}
 			var inflateSuccess:Boolean = false;
-			if (base64Success) {
+			if (base64Success){
 				// Decompress
 				try {
 					b.inflate();
 					inflateSuccess = true;
-				} catch (e:Error) {
+				} catch (e:Error){
 					// Probably random user input string
 				}
 			}
-			if (!inflateSuccess) {
+			if (!inflateSuccess){
 				// Use md5 hash
 				MD5.hash(str);
 				b = MD5.digest;
 			}
 			// Make sure there are a whole number of ints
 			b.position = b.length;
-			while(b.length % 4 > 0) { // 4 bytes per int (32 bit ints)
+			while (b.length % 4 > 0){ // 4 bytes per int (32 bit ints)
 				// pad with zeros
 				b.writeByte(0);
 			}
 			
 			// Convert ByteArray to beats
-			var mask:uint = (1 << bits) - 1;  // e.g. if bits=4, mask=0...01111 (in binary)
+			var mask:uint = (1 << bits) - 1; // e.g. if bits=4, mask=0...01111 (in binary)
 			var len:int = _shimeNoteButton.length;
 			i = 0;
 			b.position = 0; // reset b so we can read from it
-			while (b.bytesAvailable >= 4) {
+			while (b.bytesAvailable >= 4){
 				num = b.readUnsignedInt();
-				for (var shift:int = 0; shift < 32; shift+=bits) {
+				for (var shift:int = 0; shift < 32; shift += bits){
 					var val:Boolean = ((num >>> shift) & mask) > 0;
-					if (i < len) { 
+					if (i < len){
 						_shimeNoteButton[i++].selected = (val > 0);
-					} else if (val > 0) {
+					} else if (val > 0){
 						// Toggle selected if value is true
 						_shimeNoteButton[i % len].selected = !_shimeNoteButton[i++ % len].selected;
 					}
 				}
 			}
-			if (b.bytesAvailable > 0) {
+			if (b.bytesAvailable > 0){
 				trace("WARNING: Not all bytes read from buffer!");
 			}
 			_canNoteCallbackUpdateHash = true;
@@ -908,19 +888,21 @@ package taikonome
 			
 			return fakeEvent.data;
 		}
+		
 		//TESTING HACK:
 		//Just put data for one note into wav file
 		public function getFakeSoundData(channels:int = 2):Vector.<Number> {
 			var soundData:Vector.<Number> = new Vector.<Number>;
 			var note:Note = new Note();
 			var i:int = 0;
-			while (note.hasNext()) {
-				var f:Number = note.getNextFloat();;
-				if (channels == 2) {
+			while (note.hasNext()){
+				var f:Number = note.getNextFloat();
+				;
+				if (channels == 2){
 					// Fake stereo
 					soundData[i++] = f; // Left
 					soundData[i++] = f; // Right
-				} else if (channels == 1) {
+				} else if (channels == 1){
 					soundData[i++] = f; // Left
 				}
 			}
@@ -935,28 +917,30 @@ package taikonome
 			//var wavData:ByteArray = WavUtil.encodeVector(soundData,channels);
 			
 			var soundDataFloats:ByteArray = getSoundData(channels);
-			var wavData:ByteArray = WavUtil.encodeFloatByteArray(soundDataFloats,channels);
+			var wavData:ByteArray = WavUtil.encodeFloatByteArray(soundDataFloats, channels);
 			
 			var file:FileReference = new FileReference();
 			
-			file.save( wavData, 'taikonome_loop_' + _tempo + 'bps.wav' );
+			file.save(wavData, 'taikonome_loop_' + _tempo + 'bps.wav');
 		}
 		
-		public function mp3EncodeError(event : ErrorEvent) : void {
+		public function mp3EncodeError(event:ErrorEvent):void {
 			
 			trace("[ERROR] : ", event.text);
 		}
-		private function mp3EncodeProgress(event : ProgressEvent) : void {
+		
+		private function mp3EncodeProgress(event:ProgressEvent):void {
 			trace(event.bytesLoaded, event.bytesTotal);
 		}
-		public function mp3EncodeComplete(event : Event) : void {
+		
+		public function mp3EncodeComplete(event:Event):void {
 			_mp3Button.label = "Save mp3";
 			_mp3Converted = true;
 		}
 		
 		public function onSaveMp3Click(event:MouseEvent):void {
 			var channels:int = 2;
-			if ( ! _mp3Converted) {
+			if (!_mp3Converted){
 				_mp3Button.label = "converting...";
 				
 				var soundDataFloats:ByteArray = getSoundData(channels);
@@ -978,7 +962,7 @@ package taikonome
 		public function onLinkClick(event:MouseEvent):void {
 			var str:String = getURLVars().toString();
 			_urlText.visible = true;
-			_urlText.text = "taikonome.com/#" + str.replace(/%5F/g,"_").replace(/%2D/g,"-");
+			_urlText.text = "taikonome.com/#" + str.replace(/%5F/g, "_").replace(/%2D/g, "-");
 		}
 	}
 }
