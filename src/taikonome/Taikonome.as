@@ -1,9 +1,15 @@
 package taikonome {
 	import com.adobe.crypto.MD5;
+	import com.bit101.components.Component;
 	import com.bit101.components.HUISlider;
 	import com.bit101.components.InputText;
 	import com.bit101.components.Label;
 	import com.bit101.components.PushButton;
+	import com.bit101.components.TextArea;
+	import com.bit101.components.Window;
+	import com.spikything.utils.MouseWheelTrap;
+	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
 	import flash.display.Sprite;
 	import flash.display.StageAlign;
 	import flash.display.StageScaleMode;
@@ -77,8 +83,6 @@ package taikonome {
 		public static const ALPHA_PLAY:Number = 0.8;
 		public static const ALPHA_OFF:Number = 0.3;
 		
-		public static const BITS_PER_BEAT:int = NoteButton.LEVEL_BITS; // 2
-		
 		public var eighthnotes:Boolean;
 		public var sxthnnotes:Boolean;
 		
@@ -109,7 +113,12 @@ package taikonome {
 		protected var _wavButton:PushButton;
 		protected var _mp3Button:PushButton;
 		protected var _linkButton:PushButton;
-		protected var _urlText:InputText
+		protected var _urlText:InputText;
+		protected var _mousewheelMessage:Label;
+		public var win:Window ;
+		
+		public var userAgent:String;
+		public var isChrome:Boolean;
 		
 		protected var _canNoteCallbackUpdateHash:Boolean = true;
 		protected var _hashChangeTimer:uint = 0;
@@ -125,7 +134,18 @@ package taikonome {
 		
 		// Debug clicking
 		public function onClickStage(e:MouseEvent):void {
-			trace(e.target, e.target.name);
+			try { 
+				var t:DisplayObjectContainer = DisplayObjectContainer(e.target);
+				trace(e.target, e.target.name, t.doubleClickEnabled);
+				if (t.parent){
+					while(t.parent){
+						trace(t.parent, t.parent.name, t.doubleClickEnabled);
+						t = t.parent;
+					}
+				}
+			} catch (error:Error) {
+				trace(e.target, e.target.name);
+			}
 		}
 		
 		/**
@@ -260,6 +280,29 @@ package taikonome {
 			} else if (arg.v != VERSION.replace(/\./, "_")){
 				//TODO detect old versions?
 				trace("[Taikonome]Warning: version string does not match")
+				// Redirect to archived version
+				var version:String = arg.v.replace(/_/, ".");
+				var url:String = "http://taikonome.com/" + version + "/" + s;
+				var msg:String = "You have entered a link for an older version of Taikonome.  Please change the url to " +url;
+				//userAgent = ExternalInterface.call("alert('" + msg + "')");
+				win = new Window(this, this.width / 2 - 175, this.height / 2 - 42, "Detected link for old version    (double-click to close)");
+				win.width = 350;
+				win.height = 84;
+				win.hasCloseButton = true;
+				win.addEventListener(Event.CLOSE, function(event:Event):void { var win:Window = Window(event.target); win.parent.removeChild(win); } );
+				
+				// Component is hacked to recursively set the doubleClickEnabled
+				// property on all its children so that double clicking works properly
+				win.titleBar.doubleClickEnabled = true;
+				win.titleBar.addEventListener(MouseEvent.DOUBLE_CLICK, function(event:Event):void {
+					win.parent.removeChild(win); 
+					});
+				
+				var txt:TextArea = new TextArea(win, 7, 7, msg);
+				txt.width = 338;
+				txt.height = 50;
+				
+				
 			}
 			
 			// Beat hash
@@ -289,26 +332,32 @@ package taikonome {
 			if (str == null){
 				str = beatToHash();
 			}
-			_hashChangeTimer = setTimeout(pushExternalBeatHash, 300, str);
+			_hashChangeTimer = setTimeout(pushExternalBeatHash, 800, str);
 		}
 		
 		public function batchVarHashUpdate(arg:OrderedURLVariables = null):void {
 			if (_varChangeTimer != 0){
 				clearTimeout(_varChangeTimer);
 			}
-			_varChangeTimer = setTimeout(pushURLVars, 400, arg);
+			_varChangeTimer = setTimeout(pushURLVars, 800, arg);
 		}
 		
 		private function init(e:Event = null):void {
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			// entry point
+			
 			stage.align = StageAlign.TOP;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 			createDisplay();
+			// trap mousewheel events
+			MouseWheelTrap.setup(_gridContainer);
 			
 			ExternalInterface.addCallback("flashHash", onExternalHashChange);
 			// Force update from url
 			updateFromExternalHash();
+			//DEBUG
+			stage.addEventListener(MouseEvent.CLICK, onClickStage);
+			
 		}
 		
 		// ----------------------------------------------
@@ -623,15 +672,29 @@ package taikonome {
 			
 			y = 100;
 			button = new PushButton(controlContainer, 0, y, 'Random Beat', setRandom);
-			_inputText = new InputText(controlContainer, 120, y, 'Input some text', setHashFromInputText);
+			_inputText = new InputText(controlContainer, 120, y, 'Input some text', onInputTextChange);
 			_inputText.height = 20;
 			_inputText.width = 285;
 			_inputText.enabled = true;
 			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
 			_inputText.opaqueBackground = true;
-			button = new PushButton(controlContainer, 410, y, 'Generate from text', setHashFromInputText);
+			button = new PushButton(controlContainer, 410, y, 'Generate from text', onInputTextChange);
 			
 			label = new Label(controlContainer, 620, y + 5, 'Taikonome v' + VERSION);
+			_mousewheelMessage = new Label(controlContainer, 480, y + 25, '');
+			
+			// HACK for Chrome bug.  Show a message telling user to click if we're not active.
+			// MOUSE_WHEEL events not sent unless flash has been clicked.
+			// Using Javascript to call focus() does NOT enable scroll events.
+			// (focus does not activate this, and chrome requires us to be active to receive MOUSE_WHEEL events)
+			// http://code.google.com/p/chromium/issues/detail?id=86810
+			userAgent = ExternalInterface.call("window.navigator.userAgent.toString");
+			isChrome = /Chrome/.test(userAgent);
+			if (isChrome) {
+				_mousewheelMessage.text = "Click to activate mousewheel scroll for note editing";
+				stage.addEventListener(Event.ACTIVATE, function(event:Event):void { _mousewheelMessage.text = ""; } );
+				stage.addEventListener(Event.DEACTIVATE, function(event:Event):void { _mousewheelMessage.text = "Click to activate mousewheel scroll for note editing"; } );
+			}
 		}
 		
 		public function setRandom(event:Event = null):void {
@@ -663,7 +726,7 @@ package taikonome {
 			_inputText.removeEventListener(FocusEvent.FOCUS_IN, clearInput);
 		}
 		
-		public function setHashFromInputText(event:Event = null):void {
+		public function onInputTextChange(event:Event = null):void {
 			var str:String = _inputText.text;
 			var space:RegExp = /[ .,]/g;
 			str = str.replace(space, '_');
@@ -688,6 +751,7 @@ package taikonome {
 			}
 		}
 		
+		// loop input vector to fill the array
 		public function setupBeat(vec:Vector.<int>):void {
 			for (var i:int = 0; i < 32; i++){
 				_shimeNoteButton[i].level = vec[i % vec.length];
@@ -709,7 +773,8 @@ package taikonome {
 		/**
 		 * Convert beats into hash string
 		 */
-		public function beatToHash(bits:uint = BITS_PER_BEAT):String {
+		public function beatToHash():String {
+			const bits:int = NoteButton.BITS_PER_NOTE;
 			if (32 % bits != 0){
 				throw new Error("bits must be factor of 32");
 			}
@@ -771,7 +836,8 @@ package taikonome {
 		/**
 		 * Convert a hash string into beats
 		 */
-		public function hashToBeat(str:String = null, bits:int = BITS_PER_BEAT):String {
+		public function hashToBeat(str:String = null):String {
+			const bits:int = NoteButton.BITS_PER_NOTE;
 			var b:ByteArray;
 			var i:int = 0;
 			var num:uint;
@@ -849,7 +915,7 @@ package taikonome {
 						_shimeNoteButton[i++].level = val;
 					} else if (val > 0){
 						// Toggle selected if value is true
-						_shimeNoteButton[i % len].level = (_shimeNoteButton[i++ % len].level + val) % (1<<BITS_PER_BEAT);
+						_shimeNoteButton[i % len].level = (_shimeNoteButton[i++ % len].level + val) % (NoteButton.NUM_LEVELS);
 					}
 				}
 			}

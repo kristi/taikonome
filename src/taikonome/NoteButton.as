@@ -1,11 +1,14 @@
 package taikonome
 {
+	import com.adobe.utils.IntUtil;
 	import com.bit101.components.PushButton;
 	import com.bit101.components.Style;
 	import flash.display.DisplayObjectContainer;
 	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
+	import flash.ui.Mouse;
+	import com.spikything.utils.MouseWheelTrap;
 	
 	/**
 	 * ...
@@ -14,9 +17,11 @@ package taikonome
 	public class NoteButton extends PushButton 
 	{
 		public static const SELECTED_CHANGED:String = "selectedChanged";
-		public static const LEVEL_BITS:int = 2;
-		public static const MAX_LEVEL:int = (1 << LEVEL_BITS) - 1;
+		public static var BITS_PER_NOTE:int = 2;
+		public static var MAX_LEVEL:int = (1 << BITS_PER_NOTE) - 1;
+		public static var NUM_LEVELS:int = (1 << BITS_PER_NOTE);
 		public static var volumeLevels:Vector.<Number> = new <Number>[0, 0.2, 0.5, 1];
+		public static var dragLevel:int = MAX_LEVEL;
 		public var color:uint = 0xDDDDDD;
 		public var colorActive:uint = 0x00C6FF;
 		
@@ -41,6 +46,8 @@ package taikonome
 			this.label = label;
 			// Make note buttons togglable
 			this.toggle = true;
+			
+			addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
 		}
 		
 		public function set level(value:int):void {
@@ -81,6 +88,14 @@ package taikonome
 			_face.graphics.endFill();
 		}
 		
+		public function onMouseWheel(event:MouseEvent):void {
+			if (event.buttonDown) {
+				return;
+			}
+			var d:int = (event.delta > 0) ? 1 : -1;
+			level = (level + d + NUM_LEVELS) % NUM_LEVELS;
+		}
+		
 		// 
 		// Mouse handlers
 		// Overridden to allow click+drag selection
@@ -88,8 +103,8 @@ package taikonome
 		override protected function onMouseOver(event:MouseEvent):void
 		{
 			_over = true;
-			if (_toggle && event.buttonDown) { 
-				level = (level + MAX_LEVEL) % (1 << LEVEL_BITS);  // (level - 1) % 4
+			if (_toggle && event.buttonDown) {
+				level = dragLevel;
 			}
 			addEventListener(MouseEvent.ROLL_OUT, onMouseOut);
 		}
@@ -116,7 +131,14 @@ package taikonome
 		{
 			if(_toggle)
 			{
-				level = (level + MAX_LEVEL) % (1 << LEVEL_BITS);
+				if (event.shiftKey) {
+					//level = (level > 0) ? 0 : MAX_LEVEL;
+					level = dragLevel;
+				} else {
+					level = (level + MAX_LEVEL) % NUM_LEVELS;
+					dragLevel = level;
+				}
+				
 			}
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseGoUp);
 		}

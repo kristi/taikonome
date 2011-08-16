@@ -17,11 +17,13 @@ package taikonome {
 		
 		public function toString():String {
 			var str:String = null;
-			for (var key:String in this){
+			for (var key:String in this) {
+				var val:String = this[key];
+				if (val == null) { val = ''; }
 				if (str == null){
-					str = key + '=' + this[key];
+					str = key + '=' + val;
 				} else {
-					str += '&' + key + '=' + this[key];
+					str += '&' + key + '=' + val;
 				}
 			}
 			return str;

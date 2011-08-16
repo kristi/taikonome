@@ -23,12 +23,14 @@ Taikonome is released under the AGPL license.  This means that you are free to m
 
 Taikonome is written in Flash because it provides the most reliable online sound playback.  (Taikonome can play 300bps+ without skipping a beat!)  (Unfortunately, this means that iPhones and iPads won't work, but that's really Apple's fault.)  Although I think html5 is generally a better online interface, using html5 audio playing and javascript are imprecise about timing resulting in skipping sound and unsynchronized interfaces.
 
+## Code
+
+Included source code from other projects may have modifications.
+
 ## Future features  (not implemented, this is more of a todo/wishlist)
 
 * Add chu-daiko beats (don/ka)
 * Swing beat
-* Accenting beats
-* Allow export to wav (or maybe to mp3?)
 * Add/remove lines
 * Beat detection (bps via mouse click)
 * Save custom presets?
