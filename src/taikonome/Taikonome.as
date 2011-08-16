@@ -572,15 +572,19 @@ package taikonome {
 			}
 			
 			_gridContainer.x = 40;
-			_gridContainer.y = 10;
+			_gridContainer.y = 30;
 			
 			addChild(_gridContainer);
 			
-			var y:int = 90;
-			_timeClockLabel = new Label(this, 40, y, 'Time: 00:00:00');
-			//_musicClockLabel = new Label(this, 150, y, 'Music Time: 01:04:16');
+			var controlContainer:Sprite = new Sprite();
+			controlContainer.x = 40;
+			controlContainer.y = 110;
+			addChild(controlContainer);
 			
-			_volumeSlider = new HUISlider(this, 130, y, 'Volume', onVolumeChange);
+			var y:int = 10;
+			_timeClockLabel = new Label(controlContainer, 00, y, 'Time: 00:00:00');
+			
+			_volumeSlider = new HUISlider(controlContainer, 90, y, 'Volume', onVolumeChange);
 			_volumeSlider.minimum = 0;
 			_volumeSlider.maximum = 100;
 			_volumeSlider.value = 50;
@@ -589,7 +593,7 @@ package taikonome {
 			// Sync _volume
 			onVolumeChange();
 			
-			_tempoSlider = new HUISlider(this, 270, y, 'Tempo', onTempoChange);
+			_tempoSlider = new HUISlider(controlContainer, 230, y, 'Tempo', onTempoChange);
 			_tempoSlider.minimum = 20;
 			_tempoSlider.maximum = 400;
 			_tempoSlider.value = _tempo = 160;
