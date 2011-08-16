@@ -77,7 +77,7 @@ package taikonome {
 		public static const ALPHA_PLAY:Number = 0.8;
 		public static const ALPHA_OFF:Number = 0.3;
 		
-		public static const BITS_PER_BEAT:int = 1;
+		public static const BITS_PER_BEAT:int = NoteButton.LEVEL_BITS; // 2
 		
 		public var eighthnotes:Boolean;
 		public var sxthnnotes:Boolean;
@@ -381,8 +381,9 @@ package taikonome {
 						_step = n;
 						if (_step % 16 == 0){
 							// 16 steps per eighth note, 32 eighth notes per line
-							if (_shimeNoteButton[int(_step / 16) % 32].selected){
-								_noteQueue.push(new Note());
+							var noteButton:NoteButton = _shimeNoteButton[int(_step / 16) % 32];
+							if (noteButton.level > 0){
+								_noteQueue.push(new Note(noteButton.volume));
 							}
 						}
 					}
@@ -392,7 +393,7 @@ package taikonome {
 				var sample:Number = 0;
 				for each (note in _noteQueue){
 					if (note.hasNext()){
-						sample += note.getNextFloat();
+						sample += note.getNextNumber();
 					}
 				}
 				
@@ -597,45 +598,51 @@ package taikonome {
 			// Sync _tempo
 			onTempoChange();
 			
-			_playButton = new PushButton(this, 520, y, 'Play', togglePlayback);
+			_playButton = new PushButton(controlContainer, 480, y, 'Play', togglePlayback);
 			_playButton.toggle = true;
 			
-			button = new PushButton(this, 630, y, 'Clear', clearBeat);
+			button = new PushButton(controlContainer, 590, y, 'Clear', clearBeat);
 			
-			y = 120;
-			_urlText = new InputText(this, 40, y + 2, "url");
+			y = 40;
+			_urlText = new InputText(controlContainer, 0, y + 2, "url");
 			_urlText.width = 360;
 			_urlText.visible = false;
-			_wavButton = new PushButton(this, 520, y, 'Create wav', onSaveClick);
-			_mp3Button = new PushButton(this, 630, y, 'Create mp3', onSaveMp3Click);
-			_linkButton = new PushButton(this, 410, y, 'Create link', onLinkClick);
+			_wavButton = new PushButton(controlContainer, 480, y, 'Create wav', onSaveClick);
+			_mp3Button = new PushButton(controlContainer, 590, y, 'Create mp3', onSaveMp3Click);
+			_linkButton = new PushButton(controlContainer, 370, y, 'Create link', onLinkClick);
 			
-			y = 150;
-			label = new Label(this, 40, y, 'Presets');
-			button = new PushButton(this, 80, y, 'Straight', setupStraight);
-			button = new PushButton(this, 190, y, 'Horsebeat', setupHorsebeat);
-			button = new PushButton(this, 300, y, 'Matsuri', setupMatsuri);
+			y = 70;
+			label = new Label(controlContainer, 00, y, 'Presets');
+			button = new PushButton(controlContainer, 40, y, 'Straight', setupStraight);
+			button = new PushButton(controlContainer, 150, y, 'Horsebeat', setupHorsebeat);
+			button = new PushButton(controlContainer, 260, y, 'Matsuri', setupMatsuri);
 			
-			y = 180;
-			button = new PushButton(this, 40, y, 'Random Beat', setRandom);
-			_inputText = new InputText(this, 160, y, 'Input some text', setHashFromInputText);
+			y = 100;
+			button = new PushButton(controlContainer, 0, y, 'Random Beat', setRandom);
+			_inputText = new InputText(controlContainer, 120, y, 'Input some text', setHashFromInputText);
 			_inputText.height = 20;
 			_inputText.width = 285;
 			_inputText.enabled = true;
 			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
 			_inputText.opaqueBackground = true;
-			button = new PushButton(this, 450, y, 'Generate from text', setHashFromInputText);
+			button = new PushButton(controlContainer, 410, y, 'Generate from text', setHashFromInputText);
 			
-			label = new Label(this, 660, y + 5, 'Taikonome v' + VERSION);
+			label = new Label(controlContainer, 620, y + 5, 'Taikonome v' + VERSION);
 		}
 		
 		public function setRandom(event:Event = null):void {
 			var v:Vector.<int> = new Vector.<int>();
 			// Note probabilities
-			var p:Vector.<Number> = new <Number>[.8, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .7, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5, .6, .5, .5, .5,];
+			var p:Vector.<Number> = new <Number>[.85, .7, .7, .7, .8, .7, .7, .7,  .85, .7, .7, .7, .8, .7, .7, .7, 
+			                                     .85, .7, .7, .7, .8, .7, .7, .7,  .85, .7, .7, .7, .8, .7, .7, .7,];
 			_canNoteCallbackUpdateHash = false;
-			for (var i:int = 0; i < _shimeNoteButton.length; i++){
-				_shimeNoteButton[i].selected = (Math.random() < p[i]);
+			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
+				if (Math.random() < p[i]) {
+					_shimeNoteButton[i].level = Math.round(Math.random() * NoteButton.MAX_LEVEL);
+				} else {
+					_shimeNoteButton[i].level = 0;
+				}
+				
 			}
 			// Generate from md5
 			//var b:ByteArray = new ByteArray();
@@ -673,32 +680,26 @@ package taikonome {
 		
 		public function clearBeat(event:Event = null):void {
 			for each (var button:NoteButton in _shimeNoteButton){
-				button.selected = false;
+				button.level = 0;
+			}
+		}
+		
+		public function setupBeat(vec:Vector.<int>):void {
+			for (var i:int = 0; i < 32; i++){
+				_shimeNoteButton[i].level = vec[i % vec.length];
 			}
 		}
 		
 		public function setupHorsebeat(event:Event = null):void {
-			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++){
-				button = _shimeNoteButton[i];
-				button.selected = (i % 4 != 1);
-			}
+			setupBeat(new <int>[3, 0, 2, 2]);
 		}
 		
 		public function setupStraight(event:Event = null):void {
-			var button:NoteButton;
-			for (var i:int = 0; i < 32; i++){
-				button = _shimeNoteButton[i];
-				button.selected = (i % 2 == 0);
-			}
+			setupBeat(new <int>[2, 0, 2, 0]);
 		}
 		
 		public function setupMatsuri(event:Event = null):void {
-			var button:NoteButton;
-			for (var i:int = 0; i < _shimeNoteButton.length; i++){
-				button = _shimeNoteButton[i];
-				button.selected = (i % 4 != 1) && (i % 8 != 7);
-			}
+			setupBeat(new <int>[3, 0, 2, 2, 2, 0, 2, 0]);
 		}
 		
 		/**
@@ -715,12 +716,12 @@ package taikonome {
 			var num:uint = 0;
 			var shift:uint = 0;
 			var s:int = 0;
-			var num_selected:int = 0;
+			var numSelected:int = 0;
 			var len:int = _shimeNoteButton.length;
 			for (var i:uint = 0; i < len; i++){
-				s = uint(_shimeNoteButton[i].selected);
+				s = uint(_shimeNoteButton[i].level);
 				if (s > 0){
-					num_selected++;
+					numSelected++;
 				}
 				num += s << (bits * shift++);
 				if (shift * bits >= 32 || i + 1 == len){ // 32-bit ints
@@ -729,7 +730,7 @@ package taikonome {
 					num = 0;
 				}
 			}
-			if (num_selected == 0){
+			if (numSelected == 0){
 				return "";
 			}
 			b.deflate(); // Compress byte array
@@ -839,12 +840,12 @@ package taikonome {
 			while (b.bytesAvailable >= 4){
 				num = b.readUnsignedInt();
 				for (var shift:int = 0; shift < 32; shift += bits){
-					var val:Boolean = ((num >>> shift) & mask) > 0;
+					var val:int = ((num >>> shift) & mask);
 					if (i < len){
-						_shimeNoteButton[i++].selected = (val > 0);
+						_shimeNoteButton[i++].level = val;
 					} else if (val > 0){
 						// Toggle selected if value is true
-						_shimeNoteButton[i % len].selected = !_shimeNoteButton[i++ % len].selected;
+						_shimeNoteButton[i % len].level = (_shimeNoteButton[i++ % len].level + val) % (1<<BITS_PER_BEAT);
 					}
 				}
 			}
@@ -886,26 +887,6 @@ package taikonome {
 			// TODO true looping (check queue if there are any notes to overlap at the start
 			
 			return fakeEvent.data;
-		}
-		
-		//TESTING HACK:
-		//Just put data for one note into wav file
-		public function getFakeSoundData(channels:int = 2):Vector.<Number> {
-			var soundData:Vector.<Number> = new Vector.<Number>;
-			var note:Note = new Note();
-			var i:int = 0;
-			while (note.hasNext()){
-				var f:Number = note.getNextFloat();
-				;
-				if (channels == 2){
-					// Fake stereo
-					soundData[i++] = f; // Left
-					soundData[i++] = f; // Right
-				} else if (channels == 1){
-					soundData[i++] = f; // Left
-				}
-			}
-			return soundData;
 		}
 		
 		public function onSaveClick(event:MouseEvent):void {

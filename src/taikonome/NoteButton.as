@@ -14,11 +14,14 @@ package taikonome
 	public class NoteButton extends PushButton 
 	{
 		public static const SELECTED_CHANGED:String = "selectedChanged";
+		public static const LEVEL_BITS:int = 2;
+		public static const MAX_LEVEL:int = (1 << LEVEL_BITS) - 1;
+		public static var volumeLevels:Vector.<Number> = new <Number>[0, 0.2, 0.5, 1];
 		public var color:uint = 0xDDDDDD;
 		public var colorActive:uint = 0x00C6FF;
 		
 		public var index:int = 0;
-		public var level:int = 0;  // 0 off, 1 low, 2 normal, 3 accented
+		public var _level:int = 0;  // 0 off, 1 low, 2 normal, 3 accented
 		
 		/**
 		 * Constructor
@@ -40,23 +43,26 @@ package taikonome
 			this.toggle = true;
 		}
 		
-		// Update button face when changing the selected value
-		override public function set selected(value:Boolean):void
-		{
-			var old_selected:Boolean = _selected;
-			if(!_toggle)
-			{
-				value = false;
-			}
-			
-			_selected = value;
-			_down = _selected;
-			
-			if (old_selected != _selected) {
-				_face.filters = [getShadow(1, _selected)];
+		public function set level(value:int):void {
+			var oldLevel:int = _level;
+			_level = Math.max(0, Math.min(MAX_LEVEL, value));
+			if (oldLevel != _level) {
 				drawFace();
 				dispatchEvent(new Event(SELECTED_CHANGED));
 			}
+		}
+		public function get level():int {
+			return _level;
+		}
+		public function get volume():Number {
+			return NoteButton.volumeLevels[_level];
+		}
+		// this is a hack, remove selected
+		override public function get selected():Boolean {
+			return (_level > 0);
+		}
+		override public function set selected(value:Boolean):void {
+			_level = 2;
 		}
 		
 		/**
@@ -65,22 +71,13 @@ package taikonome
 		override protected function drawFace():void
 		{
 			_face.graphics.clear();
-			//if(_selected && !_down) {
-				//_face.graphics.beginFill(colorActive);
-			//} else if(_down && !_selected) {
-				//_face.graphics.beginFill(0x00ff00);
-			//} else if (_selected && _down) {
-				//_face.graphics.beginFill(0xff0000);
-			//} else {
-				//_face.graphics.beginFill(color);
-			//}
-			if(_selected ) {
+
+			if(_level > 0 ) {
 				_face.graphics.beginFill(colorActive);
 			} else {
 				_face.graphics.beginFill(color);
 			}
-			//_face.graphics.drawRect(0, 0, _width - 2, _height - 2);
-			_face.graphics.drawRoundRect(0, 0, _width - 2, _height - 2, 3, 3);
+			_face.graphics.drawRoundRect(0, (_height - 2)*(1-volume), _width - 2, (_height - 2)*volume, 3, 3);
 			_face.graphics.endFill();
 		}
 		
@@ -92,8 +89,7 @@ package taikonome
 		{
 			_over = true;
 			if (_toggle && event.buttonDown) { 
-				selected = !selected; 
-				//drawFace();
+				level = (level + MAX_LEVEL) % (1 << LEVEL_BITS);  // (level - 1) % 4
 			}
 			addEventListener(MouseEvent.ROLL_OUT, onMouseOut);
 		}
@@ -120,11 +116,8 @@ package taikonome
 		{
 			if(_toggle)
 			{
-				selected = !selected;
+				level = (level + MAX_LEVEL) % (1 << LEVEL_BITS);
 			}
-			//_down = true;
-			//drawFace();
-			//_face.filters = [getShadow(1, true)];
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseGoUp);
 		}
 		
@@ -134,13 +127,6 @@ package taikonome
 		 */
 		override protected function onMouseGoUp(event:MouseEvent):void
 		{
-			//if(_toggle  && _over)
-			//{
-				//_selected = !_selected;
-			//}
-			//_down = _selected;
-			//drawFace();
-			//_face.filters = [getShadow(1, _selected)];
 			stage.removeEventListener(MouseEvent.MOUSE_UP, onMouseGoUp);
 		}
 	}

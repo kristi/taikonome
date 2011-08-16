@@ -10,45 +10,29 @@ package taikonome
 	 */
 	public class Note
 	{
-		protected var _index	:int;
-		protected var _duration	:int;
-		protected var _frequency:Number;
-		protected var _amp		:Number;
+		public var duration	:uint;
+		public var frequency:uint;
+		public var volume		:Number;
+		public var index:int;
 		
 		[Embed(source = "../assets/shime67.wav", mimeType = "application/octet-stream")]
 		public const WavFile:Class;
 		public const sound:WavSound = new WavSound(new WavFile() as ByteArray);
 		
-		public function Note( maxAmplitude:Number = 1 )
+		public function Note( vol:Number = 1 )
 		{
-			_index = 0;
-			_duration = sound.samples.length;
-			_frequency = sound.playbackSettings.sampleRate;
-			_amp = maxAmplitude;
+			index = 0;
+			duration = sound.samples.length;
+			frequency = sound.playbackSettings.sampleRate;
+			volume = vol
 		}
-		
-		public function getNext():int {
-			return _index + 1 < _duration ? _index++ : _index;
-		}
-		
-		public function getNextFloat():Number {
+		public function getNextNumber():Number {
 			// TODO Stereo sounds
-			return _index + 1 < _duration ? _amp * sound.samples.left[_index++]: 0;
-		}
-		
-		public function get frequency():Number {
-			return _frequency;
+			return index + 1 < duration ? volume * sound.samples.left[index++]: 0;
 		}
 		
 		public function hasNext():Boolean {
-			return _index + 1 < _duration;
+			return index + 1 < duration;
 		}
-		
-		// -- do a little fade out here to prevent pop
-		public function get amplitude():Number {
-			//TODO fix and use this
-			return ( 1 - ( _index / _duration ) ) * _amp;
-		}
-
 	}
 }
