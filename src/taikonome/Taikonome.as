@@ -17,7 +17,6 @@ package taikonome {
 	import flash.media.Sound;
 	import flash.media.SoundChannel;
 	import flash.net.FileReference;
-	import flash.net.URLVariables;
 	import flash.utils.ByteArray;
 	import flash.utils.clearTimeout;
 	import flash.utils.setTimeout;
@@ -177,7 +176,7 @@ package taikonome {
 				currentHash = currentHash.replace(/^#/, '');
 				var newHash:String = str;
 				
-				newHash = newHash.replace(/%5F/g, "_").replace(/%2D/g, "-");
+				//newHash = newHash.replace(/%5F/g, "_").replace(/%2D/g, "-");
 				if (newHash != currentHash){
 					_currentHash = newHash;
 					ExternalInterface.call("setHash", newHash);
@@ -194,7 +193,7 @@ package taikonome {
 				h = beatToHash();
 			}
 			var str:String = _currentHash;
-			var arg:URLVariables = new URLVariables();
+			var arg:OrderedURLVariables = new OrderedURLVariables();
 			if (str != null && str.length > 0){
 				arg.decode(str);
 			}
@@ -206,11 +205,11 @@ package taikonome {
 			setExternalHash(arg.toString());
 		}
 		
-		public function getURLVars(arg:URLVariables = null):URLVariables {
+		public function getURLVars(arg:OrderedURLVariables = null):OrderedURLVariables {
 			var str:String;
 			if (arg == null){
 				str = _currentHash;
-				arg = new URLVariables();
+				arg = new OrderedURLVariables();
 				if (str != null && str.length > 0){
 					arg.decode(str);
 				}
@@ -226,7 +225,7 @@ package taikonome {
 		 * If arg is null, read the current hash.
 		 * @param	arg
 		 */
-		public function pushURLVars(arg:URLVariables = null):void {
+		public function pushURLVars(arg:OrderedURLVariables = null):void {
 			setExternalHash(getURLVars(arg).toString());
 		}
 		
@@ -249,7 +248,7 @@ package taikonome {
 			}
 			// Parse string
 			// Format: "v=0.3&b=160&h=HaShCoDe"
-			var arg:URLVariables = new URLVariables(s);
+			var arg:OrderedURLVariables = new OrderedURLVariables(s);
 			
 			if (arg == null){
 				trace("[Taikonome]Warning:Couldn't parse hash", s);
@@ -293,7 +292,7 @@ package taikonome {
 			_hashChangeTimer = setTimeout(pushExternalBeatHash, 300, str);
 		}
 		
-		public function batchVarHashUpdate(arg:URLVariables = null):void {
+		public function batchVarHashUpdate(arg:OrderedURLVariables = null):void {
 			if (_varChangeTimer != 0){
 				clearTimeout(_varChangeTimer);
 			}
