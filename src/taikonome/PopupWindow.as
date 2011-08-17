@@ -79,7 +79,7 @@ package taikonome
 		override protected function onClose(event:MouseEvent):void {
 			if(parent)
 				parent.removeChild(this);
-			super.onClose(event);
+			//super.onClose(event);
 		}
 		
 		// for double-click
