@@ -16,14 +16,19 @@ package taikonome
 	 */
 	public class NoteButton extends PushButton 
 	{
+		public static const ALPHA_PLAY:Number = 0.8;
+		public static const ALPHA_OFF:Number = 0.4;
 		public static const SELECTED_CHANGED:String = "selectedChanged";
 		public static var BITS_PER_NOTE:int = 2;
 		public static var MAX_LEVEL:int = (1 << BITS_PER_NOTE) - 1;
 		public static var NUM_LEVELS:int = (1 << BITS_PER_NOTE);
-		public static var volumeLevels:Vector.<Number> = new <Number>[0, 0.2, 0.5, 1];
+		public static var volumeLevels:Vector.<Number> = new <Number>[0, 0.2, 0.6, 1];
 		public static var dragLevel:int = MAX_LEVEL;
-		public var color:uint = 0xDDDDDD;
-		public var colorActive:uint = 0x00C6FF;
+		public var backgroundColor:uint = 0xDDDDDD;
+		public var foregroundColor:uint = 0x4CD8FF;
+		public var activeBackgroundColor:uint = 0xE8E8E8;
+		public var activeForegroundColor:uint = 0x00C6FF;
+		public var _active:Boolean = false;  // if this note is playing
 		
 		public var index:int = 0;
 		public var _level:int = 0;  // 0 off, 1 low, 2 normal, 3 accented
@@ -46,6 +51,7 @@ package taikonome
 			this.label = label;
 			// Make note buttons togglable
 			this.toggle = true;
+			active = false;
 			
 			addEventListener(MouseEvent.MOUSE_WHEEL, onMouseWheel);
 		}
@@ -69,7 +75,16 @@ package taikonome
 			return (_level > 0);
 		}
 		override public function set selected(value:Boolean):void {
-			_level = 2;
+			_level = (value) ? 2 : 0;
+		}
+		
+		public function get active():Boolean {
+			return _active;
+		}
+		public function set active(value:Boolean):void {
+			_active = value;
+			alpha = (_active) ? ALPHA_PLAY : ALPHA_OFF;
+			drawFace()
 		}
 		
 		/**
@@ -78,13 +93,23 @@ package taikonome
 		override protected function drawFace():void
 		{
 			_face.graphics.clear();
-
-			if(_level > 0 ) {
-				_face.graphics.beginFill(colorActive);
+			if (_active) { 
+				_face.graphics.beginFill(activeBackgroundColor);
 			} else {
-				_face.graphics.beginFill(color);
+				_face.graphics.beginFill(backgroundColor);
 			}
-			_face.graphics.drawRoundRect(0, (_height - 2)*(1-volume), _width - 2, (_height - 2)*volume, 3, 3);
+			// draw background
+			_face.graphics.drawRoundRect(0, 0, _width - 2, (_height - 2), 3, 3);
+			_face.graphics.endFill();
+			if (_level > 0 ) {
+				if (_active) {
+					_face.graphics.beginFill(activeForegroundColor);
+				} else {
+					_face.graphics.beginFill(foregroundColor);
+				}
+				// draw foreground
+				_face.graphics.drawRoundRect(0, (_height - 2)*(1-volume), _width - 2, (_height - 2)*volume, 3, 3);
+			}
 			_face.graphics.endFill();
 		}
 		

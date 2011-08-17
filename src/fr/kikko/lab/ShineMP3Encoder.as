@@ -24,12 +24,12 @@ package fr.kikko.lab {
 		private var initTime:uint;
 		
 		public function ShineMP3Encoder(wavData:ByteArray) {
-			trace("ShineMP3Encoder");
+			//trace("ShineMP3Encoder");
 			this.wavData = wavData;
 		}
 
 		public function start() : void {
-			trace("ShineMP3Encoder.start");
+			//trace("ShineMP3Encoder.start");
 			initTime = getTimer();
 			mp3Data = new ByteArray();
 			// Reset the wavData position so we can read from it
@@ -45,7 +45,7 @@ package fr.kikko.lab {
 		}
 		
 		public function shineError(message:String):void {
-			trace("ShineMP3Encoder.shineError");
+			//trace("ShineMP3Encoder.shineError");
 			timer.stop();
 			timer.removeEventListener(TimerEvent.TIMER, update);
 			timer = null;
@@ -54,14 +54,14 @@ package fr.kikko.lab {
 		}
 		
 		public function saveAs(filename:String=".mp3"):void {
-			trace("ShineMP3Encoder.saveAs");
+			//trace("ShineMP3Encoder.saveAs");
 			(new FileReference()).save(mp3Data, filename);
 		}
 		
 		private function update(event : TimerEvent) : void {
-			trace("ShineMP3Encoder.update");
+			//trace("ShineMP3Encoder.update");
 			var percent:int = cshine.update();
-			dispatchEvent(new ProgressEvent(ProgressEvent.PROGRESS, false, false, percent, 100));
+			//dispatchEvent(new ProgressEvent(ProgressEvent.PROGRESS, false, false, percent, 100));
 			
 			trace("encoding mp3...", percent+"%");
 			

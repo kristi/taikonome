@@ -80,9 +80,6 @@ package taikonome {
 		public static const TIME_3_4:String = '3/4';
 		public static const TIME_4_4:String = '4/4';
 		
-		public static const ALPHA_PLAY:Number = 0.8;
-		public static const ALPHA_OFF:Number = 0.3;
-		
 		public var eighthnotes:Boolean;
 		public var sxthnnotes:Boolean;
 		
@@ -101,6 +98,7 @@ package taikonome {
 		protected var _quarterNoteButton:Vector.<NoteButton>;
 		protected var _wholeNoteButton:Vector.<NoteButton>;
 		protected var _shimeNoteButton:Vector.<NoteButton>;
+		protected var _shimeNotes:Vector.<Note>;
 		
 		protected var _gridContainer:Sprite;
 		protected var _timeClockLabel:Label;
@@ -313,7 +311,7 @@ package taikonome {
 				clearBeat();
 				_canNoteCallbackUpdateHash = true;
 			}
-			// Tempo (in bps)
+			// Tempo (in bpm)
 			if (arg.b){
 				var n:Number = Number(arg.b);
 				if (!isNaN(n)){
@@ -355,8 +353,8 @@ package taikonome {
 			ExternalInterface.addCallback("flashHash", onExternalHashChange);
 			// Force update from url
 			updateFromExternalHash();
-			//DEBUG
-			stage.addEventListener(MouseEvent.CLICK, onClickStage);
+			//DEBUG mouseclicks
+			//stage.addEventListener(MouseEvent.CLICK, onClickStage);
 			
 		}
 		
@@ -430,9 +428,11 @@ package taikonome {
 						_step = n;
 						if (_step % 16 == 0){
 							// 16 steps per eighth note, 32 eighth notes per line
-							var noteButton:NoteButton = _shimeNoteButton[int(_step / 16) % 32];
+							var noteIndex:int = int(_step / 16) % 32;
+							var noteButton:NoteButton = _shimeNoteButton[noteIndex];
+							
 							if (noteButton.level > 0){
-								_noteQueue.push(new Note(noteButton.volume));
+								_noteQueue.push(_shimeNotes[noteIndex].reset(noteButton.volume));
 							}
 						}
 					}
@@ -440,15 +440,19 @@ package taikonome {
 				
 				// -- create the samples, if there are multiple notes in the queue we us addition to merge them
 				var sample:Number = 0;
+				var numToRemove:int = 0;
 				for each (note in _noteQueue){
 					if (note.hasNext()){
 						sample += note.getNextNumber();
+					} else {
+						numToRemove++
 					}
+				}
+				if (numToRemove > 0) {
+					_noteQueue.splice(0, numToRemove);
 				}
 				
 				// Change volume
-				// Use squared to get a better dynamic range
-				// TODO fade volume change so you don't get little pops when changing
 				sample *= _volume;
 				
 				event.data.writeFloat(sample * .8); //L?
@@ -494,27 +498,27 @@ package taikonome {
 				// -- current 1/8 note
 				for (i = 0; i < _shimeNoteButton.length; i++){
 					if (i == eighth){
-						_shimeNoteButton[i].alpha = ALPHA_PLAY
+						_shimeNoteButton[i].active = true;
 					} else {
-						_shimeNoteButton[i].alpha = ALPHA_OFF;
+						_shimeNoteButton[i].active = false;
 					}
 				}
 				
 				// -- current 1/4 note
 				for (i = 0; i < _quarterNoteButton.length; i++){
 					if (i == quarter){
-						_quarterNoteButton[i].alpha = ALPHA_PLAY;
+						_quarterNoteButton[i].active = true;
 					} else {
-						_quarterNoteButton[i].alpha = ALPHA_OFF;
+						_quarterNoteButton[i].active = false;
 					}
 				}
 				
 				// -- current measure
 				for (i = 0; i < _wholeNoteButton.length; i++){
 					if (i == measure){
-						_wholeNoteButton[i].alpha = ALPHA_PLAY;
+						_wholeNoteButton[i].active = true;
 					} else {
-						_wholeNoteButton[i].alpha = ALPHA_OFF;
+						_wholeNoteButton[i].active = false;
 					}
 				}
 				
@@ -559,47 +563,51 @@ package taikonome {
 			_gridContainer = new Sprite();
 			
 			w = (WIDTH / 32) - padding;
-			_shimeNoteButton = new Vector.<NoteButton>();
+			_shimeNoteButton = new Vector.<NoteButton>(32, true);
+			_shimeNotes = new Vector.<Note>(32, true);
 			
 			// -- eighth note squares
-			for (i = 0; i < 32; i++){
-				noteButton = new NoteButton(_gridContainer);
-				//if (int(i / 8) % 2 ) noteButton.color = 0xCCCCCC;
-				//else noteButton.color = 0xEEEEEE;
+			for (i = 0; i < 32; i++) {
+				_shimeNotes[i] = new Note();
+				noteButton = new NoteButton();
+				_shimeNoteButton[i] = noteButton;
+				
+				// Make first beat of measure lighter
+				if (int(i % 8) == 0 ) {
+					noteButton.backgroundColor = 0xF8F8F8;
+				}
 				
 				noteButton.width = w;
 				noteButton.height = NOTEBUTTON_HEIGHT;
 				noteButton.x = (i * w) + (i * padding);
 				noteButton.y = 22;
-				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(... u):void {
 						if (_canNoteCallbackUpdateHash){
 							batchBeatHashUpdate();
 						}
 					});
-				
-				_shimeNoteButton.push(noteButton);
+				_gridContainer.addChild(noteButton);
 			}
 			
 			// -- quarter note squares
 			w = (WIDTH / 16) - padding;
 			_quarterNoteButton = new Vector.<NoteButton>();
 			for (i = 0; i < 16; i++){
-				noteButton = new NoteButton(_gridContainer);
+				noteButton = new NoteButton();
 				if (i % 2)
-					noteButton.color = 0xCCCCCC;
+					noteButton.backgroundColor = 0xCCCCCC;
 				else
-					noteButton.color = 0xEEEEEE;
+					noteButton.backgroundColor = 0xEEEEEE;
 				noteButton.width = w;
 				noteButton.height = 6;
 				noteButton.y = 10;
 				noteButton.x = (i * w) + (i * padding);
-				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				
 				_quarterNoteButton.push(noteButton);
 				noteButton.mouseEnabled = false; // Disable mouse clicks
+				_gridContainer.addChild(noteButton);
 			}
 			
 			// -- whole note squares
@@ -607,17 +615,17 @@ package taikonome {
 			_wholeNoteButton = new Vector.<NoteButton>();
 			for (i = 0; i < 4; i++){
 				//noteButton = getNoteSprite(w, 0x00C6FF);
-				noteButton = new NoteButton(_gridContainer);
-				noteButton.color = 0xEEEEEE;
+				noteButton = new NoteButton();
+				noteButton.backgroundColor = 0xEEEEEE;
 				noteButton.y = 0;
 				noteButton.x = (i * w) + (i * padding);
 				noteButton.width = w;
 				noteButton.height = 6;
-				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				noteButton.mouseEnabled = false; // Disable mouse clicks
 				
 				_wholeNoteButton.push(noteButton);
+				_gridContainer.addChild(noteButton);
 			}
 			
 			_gridContainer.x = 40;
@@ -672,12 +680,13 @@ package taikonome {
 			
 			y = 100;
 			button = new PushButton(controlContainer, 0, y, 'Random Beat', setRandom);
-			_inputText = new InputText(controlContainer, 120, y, 'Input some text', onInputTextChange);
+			_inputText = new InputText(null, 120, y, 'Input some text', onInputTextChange);
 			_inputText.height = 20;
 			_inputText.width = 285;
 			_inputText.enabled = true;
 			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
 			_inputText.opaqueBackground = true;
+			controlContainer.addChild(_inputText);
 			button = new PushButton(controlContainer, 410, y, 'Generate from text', onInputTextChange);
 			
 			label = new Label(controlContainer, 620, y + 5, 'Taikonome v' + VERSION);
@@ -940,6 +949,7 @@ package taikonome {
 			// Fake the SampleDataEvent
 			var fakeEvent:SampleDataEvent = new SampleDataEvent(SampleDataEvent.SAMPLE_DATA);
 			fakeEvent.data = new ByteArray();
+			fakeEvent.data.length = numSamples * channels * 2;
 			fakeEvent.position = 0;
 			// Hijack variables used in onSampleData
 			var previousNoteQueue:Array = _noteQueue;
@@ -971,7 +981,7 @@ package taikonome {
 			
 			var file:FileReference = new FileReference();
 			
-			file.save(wavData, 'taikonome_loop_' + _tempo + 'bps.wav');
+			file.save(wavData, 'taikonome_loop_' + _tempo + 'bpm.wav');
 		}
 		
 		public function mp3EncodeError(event:ErrorEvent):void {
@@ -980,7 +990,7 @@ package taikonome {
 		}
 		
 		private function mp3EncodeProgress(event:ProgressEvent):void {
-			trace(event.bytesLoaded, event.bytesTotal);
+			//trace(event.bytesLoaded, event.bytesTotal);
 		}
 		
 		public function mp3EncodeComplete(event:Event):void {
@@ -995,16 +1005,18 @@ package taikonome {
 				
 				var soundDataFloats:ByteArray = getSoundData(channels);
 				wavData = WavUtil.encodeFloatByteArray(soundDataFloats, channels);
+				// hack length
+				wavData.length = wavData.length + (wavData.length + 576) % 1152;
 				wavData.position = 0;
 				
 				mp3Encoder = new ShineMP3Encoder(wavData);
 				mp3Encoder.addEventListener(Event.COMPLETE, mp3EncodeComplete);
-				mp3Encoder.addEventListener(ProgressEvent.PROGRESS, mp3EncodeProgress);
+				//mp3Encoder.addEventListener(ProgressEvent.PROGRESS, mp3EncodeProgress);
 				mp3Encoder.addEventListener(ErrorEvent.ERROR, mp3EncodeError);
 				mp3Encoder.start();
 			} else {
 				_mp3Button.label = "Create mp3";
-				mp3Encoder.saveAs('taikonome_loop_' + _tempo + 'bps.mp3');
+				mp3Encoder.saveAs('taikonome_loop_' + _tempo + 'bpm.mp3');
 				_mp3Converted = false;
 			}
 		}

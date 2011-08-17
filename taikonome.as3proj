@@ -50,7 +50,7 @@
   </includeLibraries>
   <!-- SWC Libraries -->
   <libraryPaths>
-    <element path="lib\shineMP3_alchemy.swc" />
+    <element path="lib\shine_192bps.swc" />
   </libraryPaths>
   <!-- External Libraries -->
   <externalLibraryPaths>

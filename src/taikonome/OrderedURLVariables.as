@@ -3,12 +3,13 @@ package taikonome {
 	import mx.utils.OrderedObject;
 	dynamic public class OrderedURLVariables extends OrderedObject {
 		public function OrderedURLVariables(str:String = null){
-			if (str != null){
-				decode(str);
-			}
+			decode(str);
 		}
 		
 		public function decode(str:String):void {
+			if (str == null) {
+				return;
+			}
 			for each (var pair:String in str.split('&')){
 				var keyVal:Array = pair.split('=');
 				this[keyVal[0]] = keyVal[1];
@@ -23,7 +24,8 @@ package taikonome {
 				if (str == null){
 					str = key + '=' + val;
 				} else {
-					str += '&' + key + '=' + val;
+					str += '&' + key + '=' + val
+					;
 				}
 			}
 			return str;
