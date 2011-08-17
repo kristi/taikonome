@@ -7,3 +7,4 @@ bin/js/
 bin/test.html
 src/taikonome/Sandbox.as
 src/taikonome/Util.as
+src/taikonome/unused

@@ -1,9 +1,15 @@
 package taikonome {
 	import com.adobe.crypto.MD5;
+	import com.bit101.components.Component;
 	import com.bit101.components.HUISlider;
 	import com.bit101.components.InputText;
 	import com.bit101.components.Label;
 	import com.bit101.components.PushButton;
+	import com.bit101.components.TextArea;
+	import com.bit101.components.Window;
+	import com.spikything.utils.MouseWheelTrap;
+	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
 	import flash.display.Sprite;
 	import flash.display.StageAlign;
 	import flash.display.StageScaleMode;
@@ -61,7 +67,7 @@ package taikonome {
 	[SWF(backgroundColor="0xFDF8F2",width="770",height="500",frameRate="60")]
 	
 	public class Taikonome extends Sprite {
-		public static const VERSION:String = "0.4";
+		public static const VERSION:String = "0.5";
 		public static const BUFFER_SIZE:int = 8192;
 		public static const SAMPLE_RATE:int = 44100;
 		public static const MILS_PER_SEC:int = 1000;
@@ -73,11 +79,6 @@ package taikonome {
 		public static const LATENCY_FUDGE:int = 30; // milliseconds
 		public static const TIME_3_4:String = '3/4';
 		public static const TIME_4_4:String = '4/4';
-		
-		public static const ALPHA_PLAY:Number = 0.8;
-		public static const ALPHA_OFF:Number = 0.3;
-		
-		public static const BITS_PER_BEAT:int = NoteButton.LEVEL_BITS; // 2
 		
 		public var eighthnotes:Boolean;
 		public var sxthnnotes:Boolean;
@@ -97,6 +98,7 @@ package taikonome {
 		protected var _quarterNoteButton:Vector.<NoteButton>;
 		protected var _wholeNoteButton:Vector.<NoteButton>;
 		protected var _shimeNoteButton:Vector.<NoteButton>;
+		protected var _shimeNotes:Vector.<Note>;
 		
 		protected var _gridContainer:Sprite;
 		protected var _timeClockLabel:Label;
@@ -109,7 +111,12 @@ package taikonome {
 		protected var _wavButton:PushButton;
 		protected var _mp3Button:PushButton;
 		protected var _linkButton:PushButton;
-		protected var _urlText:InputText
+		protected var _urlText:InputText;
+		protected var _mousewheelMessage:Label;
+		public var win:Window ;
+		
+		public var userAgent:String;
+		public var isChrome:Boolean;
 		
 		protected var _canNoteCallbackUpdateHash:Boolean = true;
 		protected var _hashChangeTimer:uint = 0;
@@ -125,7 +132,18 @@ package taikonome {
 		
 		// Debug clicking
 		public function onClickStage(e:MouseEvent):void {
-			trace(e.target, e.target.name);
+			try { 
+				var t:DisplayObjectContainer = DisplayObjectContainer(e.target);
+				trace(e.target, e.target.name, t.doubleClickEnabled);
+				if (t.parent){
+					while(t.parent){
+						trace(t.parent, t.parent.name, t.doubleClickEnabled);
+						t = t.parent;
+					}
+				}
+			} catch (error:Error) {
+				trace(e.target, e.target.name);
+			}
 		}
 		
 		/**
@@ -260,6 +278,29 @@ package taikonome {
 			} else if (arg.v != VERSION.replace(/\./, "_")){
 				//TODO detect old versions?
 				trace("[Taikonome]Warning: version string does not match")
+				// Redirect to archived version
+				var version:String = arg.v.replace(/_/, ".");
+				var url:String = "http://taikonome.com/" + version + "/" + s;
+				var msg:String = "You have entered a link for an older version of Taikonome.  Please change the url to " +url;
+				//userAgent = ExternalInterface.call("alert('" + msg + "')");
+				win = new Window(this, this.width / 2 - 175, this.height / 2 - 42, "Detected link for old version    (double-click to close)");
+				win.width = 350;
+				win.height = 84;
+				win.hasCloseButton = true;
+				win.addEventListener(Event.CLOSE, function(event:Event):void { var win:Window = Window(event.target); win.parent.removeChild(win); } );
+				
+				// Component is hacked to recursively set the doubleClickEnabled
+				// property on all its children so that double clicking works properly
+				win.titleBar.doubleClickEnabled = true;
+				win.titleBar.addEventListener(MouseEvent.DOUBLE_CLICK, function(event:Event):void {
+					win.parent.removeChild(win); 
+					});
+				
+				var txt:TextArea = new TextArea(win, 7, 7, msg);
+				txt.width = 338;
+				txt.height = 50;
+				
+				
 			}
 			
 			// Beat hash
@@ -270,7 +311,7 @@ package taikonome {
 				clearBeat();
 				_canNoteCallbackUpdateHash = true;
 			}
-			// Tempo (in bps)
+			// Tempo (in bpm)
 			if (arg.b){
 				var n:Number = Number(arg.b);
 				if (!isNaN(n)){
@@ -289,26 +330,32 @@ package taikonome {
 			if (str == null){
 				str = beatToHash();
 			}
-			_hashChangeTimer = setTimeout(pushExternalBeatHash, 300, str);
+			_hashChangeTimer = setTimeout(pushExternalBeatHash, 800, str);
 		}
 		
 		public function batchVarHashUpdate(arg:OrderedURLVariables = null):void {
 			if (_varChangeTimer != 0){
 				clearTimeout(_varChangeTimer);
 			}
-			_varChangeTimer = setTimeout(pushURLVars, 400, arg);
+			_varChangeTimer = setTimeout(pushURLVars, 800, arg);
 		}
 		
 		private function init(e:Event = null):void {
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			// entry point
+			
 			stage.align = StageAlign.TOP;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 			createDisplay();
+			// trap mousewheel events
+			MouseWheelTrap.setup(_gridContainer);
 			
 			ExternalInterface.addCallback("flashHash", onExternalHashChange);
 			// Force update from url
 			updateFromExternalHash();
+			//DEBUG mouseclicks
+			//stage.addEventListener(MouseEvent.CLICK, onClickStage);
+			
 		}
 		
 		// ----------------------------------------------
@@ -381,9 +428,11 @@ package taikonome {
 						_step = n;
 						if (_step % 16 == 0){
 							// 16 steps per eighth note, 32 eighth notes per line
-							var noteButton:NoteButton = _shimeNoteButton[int(_step / 16) % 32];
+							var noteIndex:int = int(_step / 16) % 32;
+							var noteButton:NoteButton = _shimeNoteButton[noteIndex];
+							
 							if (noteButton.level > 0){
-								_noteQueue.push(new Note(noteButton.volume));
+								_noteQueue.push(_shimeNotes[noteIndex].reset(noteButton.volume));
 							}
 						}
 					}
@@ -391,15 +440,19 @@ package taikonome {
 				
 				// -- create the samples, if there are multiple notes in the queue we us addition to merge them
 				var sample:Number = 0;
+				var numToRemove:int = 0;
 				for each (note in _noteQueue){
 					if (note.hasNext()){
 						sample += note.getNextNumber();
+					} else {
+						numToRemove++
 					}
+				}
+				if (numToRemove > 0) {
+					_noteQueue.splice(0, numToRemove);
 				}
 				
 				// Change volume
-				// Use squared to get a better dynamic range
-				// TODO fade volume change so you don't get little pops when changing
 				sample *= _volume;
 				
 				event.data.writeFloat(sample * .8); //L?
@@ -445,27 +498,27 @@ package taikonome {
 				// -- current 1/8 note
 				for (i = 0; i < _shimeNoteButton.length; i++){
 					if (i == eighth){
-						_shimeNoteButton[i].alpha = ALPHA_PLAY
+						_shimeNoteButton[i].active = true;
 					} else {
-						_shimeNoteButton[i].alpha = ALPHA_OFF;
+						_shimeNoteButton[i].active = false;
 					}
 				}
 				
 				// -- current 1/4 note
 				for (i = 0; i < _quarterNoteButton.length; i++){
 					if (i == quarter){
-						_quarterNoteButton[i].alpha = ALPHA_PLAY;
+						_quarterNoteButton[i].active = true;
 					} else {
-						_quarterNoteButton[i].alpha = ALPHA_OFF;
+						_quarterNoteButton[i].active = false;
 					}
 				}
 				
 				// -- current measure
 				for (i = 0; i < _wholeNoteButton.length; i++){
 					if (i == measure){
-						_wholeNoteButton[i].alpha = ALPHA_PLAY;
+						_wholeNoteButton[i].active = true;
 					} else {
-						_wholeNoteButton[i].alpha = ALPHA_OFF;
+						_wholeNoteButton[i].active = false;
 					}
 				}
 				
@@ -510,47 +563,51 @@ package taikonome {
 			_gridContainer = new Sprite();
 			
 			w = (WIDTH / 32) - padding;
-			_shimeNoteButton = new Vector.<NoteButton>();
+			_shimeNoteButton = new Vector.<NoteButton>(32, true);
+			_shimeNotes = new Vector.<Note>(32, true);
 			
 			// -- eighth note squares
-			for (i = 0; i < 32; i++){
-				noteButton = new NoteButton(_gridContainer);
-				//if (int(i / 8) % 2 ) noteButton.color = 0xCCCCCC;
-				//else noteButton.color = 0xEEEEEE;
+			for (i = 0; i < 32; i++) {
+				_shimeNotes[i] = new Note();
+				noteButton = new NoteButton();
+				_shimeNoteButton[i] = noteButton;
+				
+				// Make first beat of measure lighter
+				if (int(i % 8) == 0 ) {
+					noteButton.backgroundColor = 0xF8F8F8;
+				}
 				
 				noteButton.width = w;
 				noteButton.height = NOTEBUTTON_HEIGHT;
 				noteButton.x = (i * w) + (i * padding);
 				noteButton.y = 22;
-				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				noteButton.addEventListener(NoteButton.SELECTED_CHANGED, function(... u):void {
 						if (_canNoteCallbackUpdateHash){
 							batchBeatHashUpdate();
 						}
 					});
-				
-				_shimeNoteButton.push(noteButton);
+				_gridContainer.addChild(noteButton);
 			}
 			
 			// -- quarter note squares
 			w = (WIDTH / 16) - padding;
 			_quarterNoteButton = new Vector.<NoteButton>();
 			for (i = 0; i < 16; i++){
-				noteButton = new NoteButton(_gridContainer);
+				noteButton = new NoteButton();
 				if (i % 2)
-					noteButton.color = 0xCCCCCC;
+					noteButton.backgroundColor = 0xCCCCCC;
 				else
-					noteButton.color = 0xEEEEEE;
+					noteButton.backgroundColor = 0xEEEEEE;
 				noteButton.width = w;
 				noteButton.height = 6;
 				noteButton.y = 10;
 				noteButton.x = (i * w) + (i * padding);
-				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				
 				_quarterNoteButton.push(noteButton);
 				noteButton.mouseEnabled = false; // Disable mouse clicks
+				_gridContainer.addChild(noteButton);
 			}
 			
 			// -- whole note squares
@@ -558,17 +615,17 @@ package taikonome {
 			_wholeNoteButton = new Vector.<NoteButton>();
 			for (i = 0; i < 4; i++){
 				//noteButton = getNoteSprite(w, 0x00C6FF);
-				noteButton = new NoteButton(_gridContainer);
-				noteButton.color = 0xEEEEEE;
+				noteButton = new NoteButton();
+				noteButton.backgroundColor = 0xEEEEEE;
 				noteButton.y = 0;
 				noteButton.x = (i * w) + (i * padding);
 				noteButton.width = w;
 				noteButton.height = 6;
-				noteButton.alpha = ALPHA_OFF;
 				noteButton.index = i;
 				noteButton.mouseEnabled = false; // Disable mouse clicks
 				
 				_wholeNoteButton.push(noteButton);
+				_gridContainer.addChild(noteButton);
 			}
 			
 			_gridContainer.x = 40;
@@ -623,15 +680,30 @@ package taikonome {
 			
 			y = 100;
 			button = new PushButton(controlContainer, 0, y, 'Random Beat', setRandom);
-			_inputText = new InputText(controlContainer, 120, y, 'Input some text', setHashFromInputText);
+			_inputText = new InputText(null, 120, y, 'Input some text', onInputTextChange);
 			_inputText.height = 20;
 			_inputText.width = 285;
 			_inputText.enabled = true;
 			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
 			_inputText.opaqueBackground = true;
-			button = new PushButton(controlContainer, 410, y, 'Generate from text', setHashFromInputText);
+			controlContainer.addChild(_inputText);
+			button = new PushButton(controlContainer, 410, y, 'Generate from text', onInputTextChange);
 			
 			label = new Label(controlContainer, 620, y + 5, 'Taikonome v' + VERSION);
+			_mousewheelMessage = new Label(controlContainer, 480, y + 25, '');
+			
+			// HACK for Chrome bug.  Show a message telling user to click if we're not active.
+			// MOUSE_WHEEL events not sent unless flash has been clicked.
+			// Using Javascript to call focus() does NOT enable scroll events.
+			// (focus does not activate this, and chrome requires us to be active to receive MOUSE_WHEEL events)
+			// http://code.google.com/p/chromium/issues/detail?id=86810
+			userAgent = ExternalInterface.call("window.navigator.userAgent.toString");
+			isChrome = /Chrome/.test(userAgent);
+			if (isChrome) {
+				_mousewheelMessage.text = "Click to activate mousewheel scroll for note editing";
+				stage.addEventListener(Event.ACTIVATE, function(event:Event):void { _mousewheelMessage.text = ""; } );
+				stage.addEventListener(Event.DEACTIVATE, function(event:Event):void { _mousewheelMessage.text = "Click to activate mousewheel scroll for note editing"; } );
+			}
 		}
 		
 		public function setRandom(event:Event = null):void {
@@ -663,7 +735,7 @@ package taikonome {
 			_inputText.removeEventListener(FocusEvent.FOCUS_IN, clearInput);
 		}
 		
-		public function setHashFromInputText(event:Event = null):void {
+		public function onInputTextChange(event:Event = null):void {
 			var str:String = _inputText.text;
 			var space:RegExp = /[ .,]/g;
 			str = str.replace(space, '_');
@@ -688,6 +760,7 @@ package taikonome {
 			}
 		}
 		
+		// loop input vector to fill the array
 		public function setupBeat(vec:Vector.<int>):void {
 			for (var i:int = 0; i < 32; i++){
 				_shimeNoteButton[i].level = vec[i % vec.length];
@@ -709,7 +782,8 @@ package taikonome {
 		/**
 		 * Convert beats into hash string
 		 */
-		public function beatToHash(bits:uint = BITS_PER_BEAT):String {
+		public function beatToHash():String {
+			const bits:int = NoteButton.BITS_PER_NOTE;
 			if (32 % bits != 0){
 				throw new Error("bits must be factor of 32");
 			}
@@ -771,7 +845,8 @@ package taikonome {
 		/**
 		 * Convert a hash string into beats
 		 */
-		public function hashToBeat(str:String = null, bits:int = BITS_PER_BEAT):String {
+		public function hashToBeat(str:String = null):String {
+			const bits:int = NoteButton.BITS_PER_NOTE;
 			var b:ByteArray;
 			var i:int = 0;
 			var num:uint;
@@ -849,7 +924,7 @@ package taikonome {
 						_shimeNoteButton[i++].level = val;
 					} else if (val > 0){
 						// Toggle selected if value is true
-						_shimeNoteButton[i % len].level = (_shimeNoteButton[i++ % len].level + val) % (1<<BITS_PER_BEAT);
+						_shimeNoteButton[i % len].level = (_shimeNoteButton[i++ % len].level + val) % (NoteButton.NUM_LEVELS);
 					}
 				}
 			}
@@ -874,6 +949,7 @@ package taikonome {
 			// Fake the SampleDataEvent
 			var fakeEvent:SampleDataEvent = new SampleDataEvent(SampleDataEvent.SAMPLE_DATA);
 			fakeEvent.data = new ByteArray();
+			fakeEvent.data.length = numSamples * channels * 2;
 			fakeEvent.position = 0;
 			// Hijack variables used in onSampleData
 			var previousNoteQueue:Array = _noteQueue;
@@ -905,7 +981,7 @@ package taikonome {
 			
 			var file:FileReference = new FileReference();
 			
-			file.save(wavData, 'taikonome_loop_' + _tempo + 'bps.wav');
+			file.save(wavData, 'taikonome_loop_' + _tempo + 'bpm.wav');
 		}
 		
 		public function mp3EncodeError(event:ErrorEvent):void {
@@ -914,7 +990,7 @@ package taikonome {
 		}
 		
 		private function mp3EncodeProgress(event:ProgressEvent):void {
-			trace(event.bytesLoaded, event.bytesTotal);
+			//trace(event.bytesLoaded, event.bytesTotal);
 		}
 		
 		public function mp3EncodeComplete(event:Event):void {
@@ -929,16 +1005,18 @@ package taikonome {
 				
 				var soundDataFloats:ByteArray = getSoundData(channels);
 				wavData = WavUtil.encodeFloatByteArray(soundDataFloats, channels);
+				// hack length
+				wavData.length = wavData.length + (wavData.length + 576) % 1152;
 				wavData.position = 0;
 				
 				mp3Encoder = new ShineMP3Encoder(wavData);
 				mp3Encoder.addEventListener(Event.COMPLETE, mp3EncodeComplete);
-				mp3Encoder.addEventListener(ProgressEvent.PROGRESS, mp3EncodeProgress);
+				//mp3Encoder.addEventListener(ProgressEvent.PROGRESS, mp3EncodeProgress);
 				mp3Encoder.addEventListener(ErrorEvent.ERROR, mp3EncodeError);
 				mp3Encoder.start();
 			} else {
 				_mp3Button.label = "Create mp3";
-				mp3Encoder.saveAs('taikonome_loop_' + _tempo + 'bps.mp3');
+				mp3Encoder.saveAs('taikonome_loop_' + _tempo + 'bpm.mp3');
 				_mp3Converted = false;
 			}
 		}

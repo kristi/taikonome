@@ -256,5 +256,12 @@ package com.bit101.components
 			return _enabled;
 		}
 
+		// HACK:  set recursively on children
+		override public function set doubleClickEnabled(value:Boolean):void {
+			super.doubleClickEnabled = value;
+			for (var i:int = 0; i < numChildren; i++ ) {
+				DisplayObjectContainer(getChildAt(i)).doubleClickEnabled = value;
+			}
+		}
 	}
 }

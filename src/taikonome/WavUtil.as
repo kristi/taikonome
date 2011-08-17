@@ -9,7 +9,6 @@ package taikonome {
 	import fr.kikko.lab.ShineMP3Encoder;
 	import flash.events.ErrorEvent;
 	
-	
 	/**
 	 * Hack together a class to generate a wav file from
 	 * raw ByteArray data
@@ -32,7 +31,8 @@ package taikonome {
 			var numSamples:uint = (samples.length >> 2 )/ channels;
 			
 			var output:ByteArray = new ByteArray();
-			output.length = 0;
+			output.length = dataBytes + 44;
+			output.position = 0;
 			output.endian = Endian.LITTLE_ENDIAN;
 			// ChunkID
 			output.writeUTFBytes( "RIFF" );

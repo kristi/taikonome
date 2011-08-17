@@ -32,6 +32,28 @@
 			$("#taikonome")[0].flashHash();
 		}
 	});
+	
+	$(document).ready(function(){
+		console.log("ready");
+		
+		// Proper mouse wheel scrolling
+		// Fail in firefox5
+		//$('#taikonome-container').scroll(function(event) {
+		//	if(event.preventDefault){event.preventDefault();}
+		//	event.returnValue=false;
+		//});
+		//
+	/*
+		var eventType = (navigator.userAgent.indexOf('Firefox') !=-1) ? "DOMMouseScroll" : "mousewheel";
+		$('#taikonome-container').bind(eventType, function(event) {
+			if(event.preventDefault){event.preventDefault();}
+			event.returnValue=false;
+			if ($.browser.webkit === true) {
+				return false;
+			}
+		});
+	*/
+	});
 	</script>
 
 
@@ -58,18 +80,18 @@ body { margin:0px auto; font-family: sans-serif; color: #555555; line-height:1.5
 a{color:#1CBBC4; text-decoration:none;}
 a:hover{text-decoration:underline;}
 #main { margin:40px auto 20px; text-align:center;}
-#metronome { margin: auto; }
+#metronome { margin: auto; padding:1px;}
+#taikonome-container{ padding:1px; display:inline;}
 #top{width:800px; margin: auto;}
 #header{width:460px; text-align:center; float:right;}
-#social-right{float:right; width=170px; padding:100px 10px 0px 10px; text-align:center;}
-#social-left{float:right; width=170px;padding:115px  40px 0px 10px; text-align:center;}
+#social-right{float:right; width:170px; padding:100px 10px 0px 10px; text-align:center;}
+#social-left{float:right; width:170px;padding:10px; text-align:center;}
 
 #logo{width:450px; height:204px; margin: auto; display: inline-block;
-background:url(taikonome-logo.png) top center no-repeat;}
-#logo:hover{background:url(taikonome-logo-mouseover.png) top center no-repeat,
-url(taikonome-logo.png) top center no-repeat;}
+background:url(taikonome-logo.png) no-repeat top center ;}
+#logo:hover{background:url(taikonome-logo-mouseover.png) no-repeat top center,
+url(taikonome-logo.png) no-repeat top center;}
 #logo:hover #logo2{display:none;}
-
 
 .FlattrButton{margin-top:7px;}
 #twitter{margin: 7px 17px 0px 0px;}
@@ -78,7 +100,7 @@ url(taikonome-logo.png) top center no-repeat;}
 #content{margin: 0px auto; padding: 10px; max-width:600px;}
 
 #footer{margin-top: 100px; font-size: .7em;}
-#footer-logo img:hover{background: url(gnome-small.png) top center no-repeat;}
+#footer-logo img:hover{background: url(gnome-small.png) no-repeat top center;}
 
 #feedback{margin-top: 10px;}
 #credits{margin-top:10px;}
@@ -136,21 +158,28 @@ url(taikonome-logo.png) top center no-repeat;}
 </div>
 <div style="clear:both;"></div>
 <div id="metronome">
-	<div id="altContent">
-		<p>Alternative content</p>
-		<p><a href="http://www.adobe.com/go/getflashplayer"><img 
-			src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif" 
-			alt="Get Adobe Flash player" /></a></p>
+	<div id="taikonome-container">
+		<div id="altContent">
+			<p>Alternative content</p>
+			<p><a href="http://www.adobe.com/go/getflashplayer"><img 
+				src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif" 
+				alt="Get Adobe Flash player" /></a></p>
+		</div>
 	</div>
 </div>
 <div id="content">
   <div id="help">
-    <p><b>Click</b> or <b>drag</b> your mouse to edit the beats.</p>
+    <p><b>Click</b> and <b>drag</b> your mouse to edit the beats.</p>
 	<p>Copy the <b>url</b> in your browser to <b>save</b> or <b>share</b> your creation.</p>
-	<br \/>
+	<br/>
 	<p>=== Changelog ===</p>
-	<p>Version 0.4: Practicing away from your browser?  <b>Save</b> your beats to a wav or mp3 file.<br/>
-	(Be patient, file creation may be a little slow.)</p>
+	<p>Version 0.5: Be more <i>dynamic</i> with note <b>accents</b>.  <br/>
+	Tip: Use your mouse wheel to change the accents.<br/>
+	Advanced tip: Hold down <code>Shift</code> and click or drag your mouse to copy accent levels.</p>
+	<p>Version 0.4: Practice with your ipod.  <b>Save</b> your beats to a <b>wav</b> or <b>mp3</b> file.<br/>
+	<small>(Note that <a href="http://www.compuphase.com/mp3/mp3loops.htm">mp3 is bad for gapless playback</a>, and this <a href="https://github.com/kikko/Shine-MP3-Encoder-on-AS3-Alchemy">flash-based mp3 encoder</a> is not very high-quality.  
+	I *highly* recommend using wav over mp3 for seamless looping.</a> <br/>
+	Also, please be patient, file creation may be a little slow.)</small></p>
 	<p>Version 0.3: Looking for <i>inspiration</i>?  Use our gnomish beat algorithms to <b>generate</b> a beat randomly or from a text string.</p>
     <p>Version 0.2: Now with <i>hash tags!</i>  Your beats get saved into the <b>url</b> address.<br />
 	You can use your browser's <b>back</b> button to <b>undo</b> your changes.</p>
