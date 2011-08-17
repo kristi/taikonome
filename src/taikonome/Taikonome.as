@@ -134,7 +134,7 @@ package taikonome {
 		public var wavData:ByteArray;
 		protected var _mp3Converted:Boolean = false;
 		protected var _wavConverted:Boolean = false;
-		protected var _oggManager:OggManager;
+		protected var _oggManager:OggManager = null;
 		
 		// Debug clicking
 		public function onClickStage(e:MouseEvent):void {
@@ -164,16 +164,6 @@ package taikonome {
 			_outsound = new Sound();
 			_base64Encoder = new Base64Encoder();
 			_base64Encoder.insertNewLines = false;
-			_oggManager = new OggManager();
-			//_oggManager.addEventListener(OggManagerEvent.ENCODE_BEGIN, handleEncodeBegin, false, 0, true);
-			//_oggManager.addEventListener(OggManagerEvent.ENCODE_PROGRESS, handleEncodeProgress, false, 0, true);
-			_oggManager.addEventListener(OggManagerEvent.ENCODE_COMPLETE, oggEncodeComplete, false, 0, true);
-			//_oggManager.addEventListener(OggManagerEvent.ENCODE_CANCEL, handleEncodeCancel, false, 0, true);
-			
-			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_BEGIN, handleWavEncodeBegin, false, 0, true);
-			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_COMPLETE, handleWavEncodeComplete, false, 0, true);
-			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_CANCEL, handleWavEncodeCancel, false, 0, true);
-			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_PROGRESS, handleWavEncodeProgress, false, 0, true);
 			
 			if (stage)
 				init();
@@ -1078,6 +1068,11 @@ package taikonome {
 		
 		public function onSaveOggClick(event:MouseEvent):void {
 			var channels:int = 2;
+			if(_oggManager==null) {
+				_oggManager = new OggManager();
+				_oggManager.addEventListener(OggManagerEvent.ENCODE_COMPLETE, oggEncodeComplete, false, 0, true);
+			}
+			
 			var soundDataFloats:ByteArray = getSoundData(channels);
 			if (!_oggConverted) {
 				_oggButton.label = "converting...";
