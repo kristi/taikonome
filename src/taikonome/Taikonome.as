@@ -7,6 +7,9 @@ package taikonome {
 	import com.bit101.components.PushButton;
 	import com.bit101.components.TextArea;
 	import com.bit101.components.Window;
+	import com.bit101.components.Style;
+	import com.jac.ogg.OggManager;
+	import com.jac.ogg.events.OggManagerEvent;
 	import com.spikything.utils.MouseWheelTrap;
 	import flash.display.DisplayObject;
 	import flash.display.DisplayObjectContainer;
@@ -110,10 +113,12 @@ package taikonome {
 		protected var _volumeSlider:HUISlider
 		protected var _wavButton:PushButton;
 		protected var _mp3Button:PushButton;
+		protected var _oggButton:PushButton;
+		
 		protected var _linkButton:PushButton;
 		protected var _urlText:InputText;
 		protected var _mousewheelMessage:Label;
-		public var win:Window ;
+		public var win:PopupWindow;
 		
 		public var userAgent:String;
 		public var isChrome:Boolean;
@@ -129,19 +134,20 @@ package taikonome {
 		public var wavData:ByteArray;
 		protected var _mp3Converted:Boolean = false;
 		protected var _wavConverted:Boolean = false;
+		protected var _oggManager:OggManager;
 		
 		// Debug clicking
 		public function onClickStage(e:MouseEvent):void {
-			try { 
+			try {
 				var t:DisplayObjectContainer = DisplayObjectContainer(e.target);
 				trace(e.target, e.target.name, t.doubleClickEnabled);
 				if (t.parent){
-					while(t.parent){
+					while (t.parent){
 						trace(t.parent, t.parent.name, t.doubleClickEnabled);
 						t = t.parent;
 					}
 				}
-			} catch (error:Error) {
+			} catch (error:Error){
 				trace(e.target, e.target.name);
 			}
 		}
@@ -158,7 +164,16 @@ package taikonome {
 			_outsound = new Sound();
 			_base64Encoder = new Base64Encoder();
 			_base64Encoder.insertNewLines = false;
-			_base64Decoder = new Base64Decoder();
+			_oggManager = new OggManager();
+			//_oggManager.addEventListener(OggManagerEvent.ENCODE_BEGIN, handleEncodeBegin, false, 0, true);
+			//_oggManager.addEventListener(OggManagerEvent.ENCODE_PROGRESS, handleEncodeProgress, false, 0, true);
+			_oggManager.addEventListener(OggManagerEvent.ENCODE_COMPLETE, oggEncodeComplete, false, 0, true);
+			//_oggManager.addEventListener(OggManagerEvent.ENCODE_CANCEL, handleEncodeCancel, false, 0, true);
+			
+			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_BEGIN, handleWavEncodeBegin, false, 0, true);
+			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_COMPLETE, handleWavEncodeComplete, false, 0, true);
+			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_CANCEL, handleWavEncodeCancel, false, 0, true);
+			//_oggManager.addEventListener(OggManagerEvent.WAV_ENCODE_PROGRESS, handleWavEncodeProgress, false, 0, true);
 			
 			if (stage)
 				init();
@@ -281,25 +296,16 @@ package taikonome {
 				// Redirect to archived version
 				var version:String = arg.v.replace(/_/, ".");
 				var url:String = "http://taikonome.com/" + version + "/" + s;
-				var msg:String = "You have entered a link for an older version of Taikonome.  Please change the url to " +url;
+				var msg:String = "You have entered a link for an older version of Taikonome.  Please change the url to " + url;
 				//userAgent = ExternalInterface.call("alert('" + msg + "')");
-				win = new Window(this, this.width / 2 - 175, this.height / 2 - 42, "Detected link for old version    (double-click to close)");
+				win = new PopupWindow(this, this.width / 2 - 175, this.height / 2 - 42, "Detected link for old version    (double-click to close)");
 				win.width = 350;
 				win.height = 84;
-				win.hasCloseButton = true;
-				win.addEventListener(Event.CLOSE, function(event:Event):void { var win:Window = Window(event.target); win.parent.removeChild(win); } );
+				win.message = msg;
 				
-				// Component is hacked to recursively set the doubleClickEnabled
-				// property on all its children so that double clicking works properly
-				win.titleBar.doubleClickEnabled = true;
-				win.titleBar.addEventListener(MouseEvent.DOUBLE_CLICK, function(event:Event):void {
-					win.parent.removeChild(win); 
-					});
-				
-				var txt:TextArea = new TextArea(win, 7, 7, msg);
-				txt.width = 338;
-				txt.height = 50;
-				
+				//var txt:TextArea = new TextArea(win, 7, 7, msg);
+				//txt.width = 338;
+				//txt.height = 50;
 				
 			}
 			
@@ -355,7 +361,7 @@ package taikonome {
 			updateFromExternalHash();
 			//DEBUG mouseclicks
 			//stage.addEventListener(MouseEvent.CLICK, onClickStage);
-			
+		
 		}
 		
 		// ----------------------------------------------
@@ -448,7 +454,7 @@ package taikonome {
 						numToRemove++
 					}
 				}
-				if (numToRemove > 0) {
+				if (numToRemove > 0){
 					_noteQueue.splice(0, numToRemove);
 				}
 				
@@ -560,6 +566,9 @@ package taikonome {
 			var label:Label;
 			var padding:int = 4;
 			
+			Style.BACKGROUND = 0xDDDDDD;
+			
+			
 			_gridContainer = new Sprite();
 			
 			w = (WIDTH / 32) - padding;
@@ -567,13 +576,13 @@ package taikonome {
 			_shimeNotes = new Vector.<Note>(32, true);
 			
 			// -- eighth note squares
-			for (i = 0; i < 32; i++) {
+			for (i = 0; i < 32; i++){
 				_shimeNotes[i] = new Note();
 				noteButton = new NoteButton();
 				_shimeNoteButton[i] = noteButton;
 				
-				// Make first beat of measure lighter
-				if (int(i % 8) == 0 ) {
+				// Make first beat of measure darker
+				if (int(i % 8) == 0){
 					noteButton.backgroundColor = 0xF8F8F8;
 				}
 				
@@ -635,10 +644,9 @@ package taikonome {
 			
 			var controlContainer:Sprite = new Sprite();
 			controlContainer.x = 40;
-			controlContainer.y = 110;
-			addChild(controlContainer);
+			controlContainer.y = 100;
 			
-			var y:int = 10;
+			var y:int = 0;
 			_timeClockLabel = new Label(controlContainer, 00, y, 'Time: 00:00:00');
 			
 			_volumeSlider = new HUISlider(controlContainer, 90, y, 'Volume', onVolumeChange);
@@ -652,45 +660,59 @@ package taikonome {
 			
 			_tempoSlider = new HUISlider(controlContainer, 230, y, 'Tempo', onTempoChange);
 			_tempoSlider.minimum = 20;
-			_tempoSlider.maximum = 400;
+			_tempoSlider.maximum = 500;
 			_tempoSlider.value = _tempo = 160;
 			_tempoSlider.width = 250;
 			_tempoSlider.labelPrecision = 0;
 			// Sync _tempo
 			onTempoChange();
 			
-			_playButton = new PushButton(controlContainer, 480, y, 'Play', togglePlayback);
+			addChild(controlContainer);
+			
+			var buttonContainer:Sprite = new Sprite();
+			buttonContainer.x = 40;
+			buttonContainer.y = 100;
+			
+			_playButton = new PushButton(buttonContainer, 480, y, 'Play', togglePlayback);
 			_playButton.toggle = true;
 			
-			button = new PushButton(controlContainer, 590, y, 'Clear', clearBeat);
+			button = new PushButton(buttonContainer, 590, y, 'Clear', clearBeat);
 			
 			y = 40;
-			_urlText = new InputText(controlContainer, 0, y + 2, "url");
-			_urlText.width = 360;
+			_urlText = new InputText(buttonContainer, 0, y + 2, "url");
+			_urlText.width = 470;
 			_urlText.visible = false;
-			_wavButton = new PushButton(controlContainer, 480, y, 'Create wav', onSaveClick);
-			_mp3Button = new PushButton(controlContainer, 590, y, 'Create mp3', onSaveMp3Click);
-			_linkButton = new PushButton(controlContainer, 370, y, 'Create link', onLinkClick);
-			
+			_wavButton = new PushButton(buttonContainer, 590, y, 'Create wav', onSaveClick);
+			_linkButton = new PushButton(buttonContainer, 480, y, 'Create link', onLinkClick);
 			y = 70;
-			label = new Label(controlContainer, 00, y, 'Presets');
-			button = new PushButton(controlContainer, 40, y, 'Straight', setupStraight);
-			button = new PushButton(controlContainer, 150, y, 'Horsebeat', setupHorsebeat);
-			button = new PushButton(controlContainer, 260, y, 'Matsuri', setupMatsuri);
+			_oggButton = new PushButton(buttonContainer, 480, y, 'Create ogg', onSaveOggClick);
+			_mp3Button = new PushButton(buttonContainer, 590, y, 'Create mp3', onSaveMp3Click);
 			
-			y = 100;
-			button = new PushButton(controlContainer, 0, y, 'Random Beat', setRandom);
-			_inputText = new InputText(null, 120, y, 'Input some text', onInputTextChange);
+			y = 40;
+			label = new Label(buttonContainer, 0, y, 'Presets');
+			button = new PushButton(buttonContainer, 43, y, 'Straight', setupStraight);
+			button = new PushButton(buttonContainer, 153, y, 'Horsebeat', setupHorsebeat);
+			button = new PushButton(buttonContainer, 263, y, 'Matsuri', setupMatsuri);
+			
+			y += 30;
+			label = new Label(buttonContainer, 0, y, 'Generate');
+			button = new PushButton(buttonContainer, 50, y, 'Random Beat', setRandom);
+			button = new PushButton(buttonContainer, 160, y, 'Random Repeating Beat', setRandomRepeating);
+			button.width = 130;
+			button = new PushButton(buttonContainer, 300, y, 'Repeat First Measure', setRepeatMeasure);
+			button.width = 130;
+			y += 30;
+			_inputText = new InputText(null, 160, y, 'Input some text', onInputTextChange);
 			_inputText.height = 20;
 			_inputText.width = 285;
 			_inputText.enabled = true;
 			_inputText.addEventListener(FocusEvent.FOCUS_IN, clearInput);
 			_inputText.opaqueBackground = true;
-			controlContainer.addChild(_inputText);
-			button = new PushButton(controlContainer, 410, y, 'Generate from text', onInputTextChange);
+			buttonContainer.addChild(_inputText);
+			button = new PushButton(buttonContainer, 50, y, 'Generate from text', onInputTextChange);
 			
-			label = new Label(controlContainer, 620, y + 5, 'Taikonome v' + VERSION);
-			_mousewheelMessage = new Label(controlContainer, 480, y + 25, '');
+			label = new Label(buttonContainer, 620, y + 7, 'Taikonome v' + VERSION);
+			_mousewheelMessage = new Label(buttonContainer, 480, y + 27, '');
 			
 			// HACK for Chrome bug.  Show a message telling user to click if we're not active.
 			// MOUSE_WHEEL events not sent unless flash has been clicked.
@@ -699,21 +721,26 @@ package taikonome {
 			// http://code.google.com/p/chromium/issues/detail?id=86810
 			userAgent = ExternalInterface.call("window.navigator.userAgent.toString");
 			isChrome = /Chrome/.test(userAgent);
-			if (isChrome) {
+			if (isChrome){
 				_mousewheelMessage.text = "Click to activate mousewheel scroll for note editing";
-				stage.addEventListener(Event.ACTIVATE, function(event:Event):void { _mousewheelMessage.text = ""; } );
-				stage.addEventListener(Event.DEACTIVATE, function(event:Event):void { _mousewheelMessage.text = "Click to activate mousewheel scroll for note editing"; } );
+				stage.addEventListener(Event.ACTIVATE, function(event:Event):void {
+						_mousewheelMessage.text = "";
+					});
+				stage.addEventListener(Event.DEACTIVATE, function(event:Event):void {
+						_mousewheelMessage.text = "Click to activate mousewheel scroll for note editing";
+					});
 			}
+			
+			addChild(buttonContainer);
 		}
 		
 		public function setRandom(event:Event = null):void {
 			var v:Vector.<int> = new Vector.<int>();
 			// Note probabilities
-			var p:Vector.<Number> = new <Number>[.85, .7, .7, .7, .8, .7, .7, .7,  .85, .7, .7, .7, .8, .7, .7, .7, 
-			                                     .85, .7, .7, .7, .8, .7, .7, .7,  .85, .7, .7, .7, .8, .7, .7, .7,];
+			var p:Vector.<Number> = new <Number>[.85, .7, .7, .7, .8, .7, .7, .7, .85, .7, .7, .7, .8, .7, .7, .7, .85, .7, .7, .7, .8, .7, .7, .7, .85, .7, .7, .7, .8, .7, .7, .7,];
 			_canNoteCallbackUpdateHash = false;
-			for (var i:int = 0; i < _shimeNoteButton.length; i++) {
-				if (Math.random() < p[i]) {
+			for (var i:int = 0; i < _shimeNoteButton.length; i++){
+				if (Math.random() < p[i]){
 					_shimeNoteButton[i].level = Math.round(Math.random() * NoteButton.MAX_LEVEL);
 				} else {
 					_shimeNoteButton[i].level = 0;
@@ -726,6 +753,34 @@ package taikonome {
 			//b.writeUnsignedInt(Math.random() * uint.MAX_VALUE);
 			//}
 			//var h:String = MD5.hashBytes(b);
+			pushExternalBeatHash(beatToHash());
+			_canNoteCallbackUpdateHash = true;
+		}
+		
+		public function setRandomRepeating(event:Event = null):void {
+			var v:Vector.<int> = new Vector.<int>(8);
+			
+			_canNoteCallbackUpdateHash = false;
+			
+			for (var i:int = 0; i < 8; i++) {
+				v[i] = int(Math.random() * NoteButton.NUM_LEVELS);
+			}
+			setupBeat(v);
+			
+			pushExternalBeatHash(beatToHash());
+			_canNoteCallbackUpdateHash = true;
+		}
+		
+		public function setRepeatMeasure(event:Event = null):void {
+			var v:Vector.<int> = new Vector.<int>(8);
+			
+			_canNoteCallbackUpdateHash = false;
+			
+			for (var i:int = 0; i < 8; i++) {
+				v[i] = _shimeNoteButton[i].level;
+			}
+			setupBeat(v);
+			
 			pushExternalBeatHash(beatToHash());
 			_canNoteCallbackUpdateHash = true;
 		}
@@ -1021,10 +1076,60 @@ package taikonome {
 			}
 		}
 		
-		public function onLinkClick(event:MouseEvent):void {
-			var str:String = getURLVars().toString();
-			_urlText.visible = true;
-			_urlText.text = "taikonome.com/#" + str.replace(/%5F/g, "_").replace(/%2D/g, "-");
+		public function onSaveOggClick(event:MouseEvent):void {
+			var channels:int = 2;
+			var soundDataFloats:ByteArray = getSoundData(channels);
+			if (!_oggConverted) {
+				_oggButton.label = "converting...";
+				//wavData = WavUtil.encodeFloatByteArray(soundDataFloats, channels);
+				//wavData.position = 0;
+				
+				_oggManager.encode(soundDataFloats, null, 0.9, 20, 2, false); //, oggComments, _view.encodeQualityStepper.value, 10, int(_view.encodeLoopsPerYieldStepper.value), _view.notifyProgressCheckbox.selected);
+			} else {
+				_oggConverted = false;
+				var file:FileReference = new FileReference();
+				
+				file.save(_oggManager.encodedBytes, 'taikonome_loop_' + _tempo + 'bpm.ogg');
+				_oggButton.label = "Create ogg";
+				
+			}
+		} //handleEncodeClick
+		
+		public var _oggConverted:Boolean = false;
+		public var _linkPopup:PopupWindow = null;
+		
+		public function oggEncodeComplete(event:Event):void {
+			_oggButton.label = "Save ogg";
+			_oggConverted = true;
 		}
+		
+		public function onLinkClick(event:MouseEvent):void {
+			
+			var str:String = getURLVars().toString();
+			str = "taikonome.com/" + VERSION + "/#" + str.replace(/%5F/g, "_").replace(/%2D/g, "-");
+			
+			if(_linkPopup==null) {
+				_linkPopup = new PopupWindow(this, this.width / 2 - 175, this.height / 2 - 42, "Permanent link    (double-click to close)");
+				_linkPopup.width = 350;
+				_linkPopup.height = 64;
+			} else {
+				_linkPopup.x = this.width / 2 - _linkPopup.width/2;
+				_linkPopup.y = this.height / 2 - _linkPopup.height / 2;
+				addChild(_linkPopup);
+			}
+			
+			_linkPopup.message = str;
+			
+		}
+		
+		private function handleEncodeComplete(e:OggManagerEvent):void { //handleEncodeComplete
+			trace("Ogg Vorbis Encode Complete"); // : " + (Math.round((getTimer() - _vorbisStartTime)/1000) + " second(s)"));
+			//trace("Total Encode Time: " + (Math.round((getTimer() - _startTime)/1000) + " second(s)"));
+			
+			if (_oggManager.encodedBytes && _oggManager.encodedBytes.length > 0){ //update ui
+				_oggButton.enabled = true;
+			} //update ui
+		
+		} //handleEncodeComplete
 	}
 }
