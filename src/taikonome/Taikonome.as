@@ -70,7 +70,8 @@ package taikonome {
 	[SWF(backgroundColor="0xFDF8F2",width="770",height="500",frameRate="60")]
 	
 	public class Taikonome extends Sprite {
-		public static const VERSION:String = "0.6.2";
+		public static const VERSION:String = "0.6";
+		public static const FULL_VERSION:String = "0.6.3";
 		public static const BUFFER_SIZE:int = 8192;
 		public static const SAMPLE_RATE:int = 44100;
 		public static const MILS_PER_SEC:int = 1000;
@@ -702,7 +703,7 @@ package taikonome {
 			buttonContainer.addChild(_inputText);
 			button = new PushButton(buttonContainer, 50, y, 'Generate from text', onInputTextChange);
 			
-			label = new Label(buttonContainer, 620, y + 7, 'Taikonome v' + VERSION);
+			label = new Label(buttonContainer, 620, y + 7, 'Taikonome v' + FULL_VERSION);
 			_mousewheelMessage = new Label(buttonContainer, 480, y + 27, '');
 			
 			// HACK for Chrome bug.  Show a message telling user to click if we're not active.
