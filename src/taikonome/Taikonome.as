@@ -70,7 +70,7 @@ package taikonome {
 	[SWF(backgroundColor="0xFDF8F2",width="770",height="500",frameRate="60")]
 	
 	public class Taikonome extends Sprite {
-		public static const VERSION:String = "0.6";
+		public static const VERSION:String = "0.6.2";
 		public static const BUFFER_SIZE:int = 8192;
 		public static const SAMPLE_RATE:int = 44100;
 		public static const MILS_PER_SEC:int = 1000;
@@ -162,6 +162,7 @@ package taikonome {
 			_step = -1;
 			_noteQueue = [];
 			_outsound = new Sound();
+			_base64Decoder = new Base64Decoder();
 			_base64Encoder = new Base64Encoder();
 			_base64Encoder.insertNewLines = false;
 			
